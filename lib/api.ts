@@ -34,6 +34,31 @@ class ApiClient {
     return data as T;
   }
 
+  // --- STORE MANAGEMENT ENDPOINTS ---
+  async getStores() {
+    return this.request<{ stores: Store[] }>('/api/stores');
+  }
+
+  async createStore(storeData: Partial<Store>) {
+    return this.request<{ success: boolean; store: Store }>('/api/stores', {
+      method: 'POST',
+      body: JSON.stringify(storeData),
+    });
+  }
+
+  async updateStore(id: string, updates: Partial<Store>) {
+    return this.request<{ success: boolean; store: Store }>(`/api/stores/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(updates),
+    });
+  }
+
+  async deleteStore(id: string) {
+    return this.request<{ success: boolean }>(`/api/stores/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
   // --- MENU ENDPOINTS ---
   async getMenuItems(storeId: string) {
     return this.request<{ items: any[]; activeSelections: string[]; prices: Record<string, number> }>(
