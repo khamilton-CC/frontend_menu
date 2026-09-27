@@ -59,42 +59,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const fetchUserData = async (currentUser: SupabaseUser) => {
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
 
-    const res = await fetch('http://localhost:5000/api/auth/me', {
-      headers: {
-        Authorization: `Bearer ${session.access_token}`,
-      },
-    });
+      const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
 
-    if (res.ok) {
-      const data = await res.json();
-      setRole(data.role);
-      setStores(data.stores);
+      const res = await fetch(`${BACKEND_URL}/api/auth/me`, {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
 
-      // Check store assignment status
-      if (data.role !== 'superadmin' && (!data.stores || data.stores.length === 0)) {
-        // Redirect standard user with 0 stores to initial selection screen
-        if (window.location.pathname !== '/select-store') {
-          window.location.href = '/select-store';
-        }
-      } else {
-        // Restore saved store or pick first available store
-        const savedStore = localStorage.getItem('cc_selected_store');
-        if (savedStore) {
-          setSelectedStore(JSON.parse(savedStore));
-        } else if (data.stores && data.stores.length > 0) {
-          setSelectedStore(data.stores[0]);
-          localStorage.setItem('cc_selected_store', JSON.stringify(data.stores[0]));
+      if (res.ok) {
+        const data = await res.json();
+        setRole(data.role);
+        setStores(data.stores);
+
+        if (data.role !== 'superadmin' && (!data.stores || data.stores.length === 0)) {
+          if (window.location.pathname !== '/select-store') {
+            window.location.href = '/select-store';
+          }
+        } else {
+          const savedStore = localStorage.getItem('cc_selected_store');
+          if (savedStore) {
+            setSelectedStore(JSON.parse(savedStore));
+          } else if (data.stores && data.stores.length > 0) {
+            setSelectedStore(data.stores[0]);
+            localStorage.setItem('cc_selected_store', JSON.stringify(data.stores[0]));
+          }
         }
       }
+    } catch (err) {
+      console.error('Error fetching user data:', err);
     }
-  } catch (err) {
-    console.error('Error fetching user data:', err);
-  }
-};
+  };
 
   const logout = async () => {
     await supabase.auth.signOut();

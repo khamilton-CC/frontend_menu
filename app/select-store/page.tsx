@@ -44,7 +44,9 @@ export default function SelectStorePage() {
     setError('');
 
     try {
-      const res = await fetch('http://localhost:5000/api/user/assign-first-store', {
+      const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+
+      const res = await fetch(`${BACKEND_URL}/api/user/assign-first-store`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -59,7 +61,6 @@ export default function SelectStorePage() {
         throw new Error(data.error || 'Failed to set primary store.');
       }
 
-      // Refresh AuthContext user state so assigned store is loaded
       if (user) {
         await fetchUserData(user);
       }
