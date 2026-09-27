@@ -10,16 +10,22 @@ export interface Store {
   has_holiday_feature: boolean;
 }
 
+export interface UserProfile {
+  first_name: string;
+  last_name: string;
+}
+
 interface AuthContextType {
   user: SupabaseUser | null;
   session: Session | null;
   token: string | null;
   role: 'admin' | 'user' | 'superadmin';
+  profile: UserProfile | null;
   stores: Store[];
   selectedStore: Store | null;
   logout: () => Promise<void>;
   changeStore: (store: Store) => void;
-  fetchUserData: (currentUser: SupabaseUser) => Promise<void>; // <--- Add this line
+  fetchUserData: (currentUser: SupabaseUser) => Promise<void>;
   loading: boolean;
 }
 
@@ -31,6 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [stores, setStores] = useState<Store[]>([]);
   const [selectedStore, setSelectedStore] = useState<Store | null>(null);
   const [role, setRole] = useState<'admin' | 'user' | 'superadmin'>('user');
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -50,6 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         fetchUserData(session.user);
       } else {
         setStores([]);
+        setProfile(null);
         setSelectedStore(null);
       }
       setLoading(false);
@@ -75,6 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const data = await res.json();
         setRole(data.role);
         setStores(data.stores);
+        setProfile(data.profile || null);
 
         if (data.role !== 'superadmin' && (!data.stores || data.stores.length === 0)) {
           if (window.location.pathname !== '/select-store') {
@@ -100,6 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('cc_selected_store');
     setUser(null);
     setSession(null);
+    setProfile(null);
     setSelectedStore(null);
   };
 
@@ -115,6 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         session,
         token: session?.access_token || null,
         role,
+        profile,
         stores,
         selectedStore,
         logout,

@@ -9,7 +9,8 @@ interface SignUpModalProps {
 }
 
 export default function SignUpModal({ isOpen, onClose }: SignUpModalProps) {
-  const [fullName, setFullName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -19,11 +20,10 @@ export default function SignUpModal({ isOpen, onClose }: SignUpModalProps) {
 
   if (!isOpen) return null;
 
-  // Validation logic
   const isDomainValid = email.toLowerCase().trim().endsWith('@connorconcepts.com');
   const isPasswordValid = password.length >= 8;
   const doPasswordsMatch = password === confirmPassword;
-  const isFormValid = fullName.trim() !== '' && isDomainValid && isPasswordValid && doPasswordsMatch;
+  const isFormValid = firstName.trim() !== '' && lastName.trim() !== '' && isDomainValid && isPasswordValid && doPasswordsMatch;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,7 +37,8 @@ export default function SignUpModal({ isOpen, onClose }: SignUpModalProps) {
       password,
       options: {
         data: {
-          full_name: fullName.trim(),
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
         },
         emailRedirectTo: `${window.location.origin}/login`,
       },
@@ -76,16 +77,29 @@ export default function SignUpModal({ isOpen, onClose }: SignUpModalProps) {
           <form onSubmit={handleSubmit} className="space-y-3">
             {error && <div className="bg-red-100 text-red-700 p-2 text-xs rounded">{error}</div>}
 
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Full Name</label>
-              <input
-                type="text"
-                required
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder="Jane Doe"
-                className="w-full border p-2 rounded text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">First Name</label>
+                <input
+                  type="text"
+                  required
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  placeholder="Jane"
+                  className="w-full border p-2 rounded text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Last Name</label>
+                <input
+                  type="text"
+                  required
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  placeholder="Doe"
+                  className="w-full border p-2 rounded text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
             </div>
 
             <div>

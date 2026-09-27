@@ -61,7 +61,10 @@ export default function PrintPreview({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const selectionKey = selectedItemIds.sort().join(',');
+  // Safeguards against undefined props during initial mounts
+  const safeMenuItems = Array.isArray(menuItems) ? menuItems : [];
+  const safeItemIds = Array.isArray(selectedItemIds) ? selectedItemIds : [];
+  const selectionKey = safeItemIds.slice().sort().join(',');
 
   // Reset to Level 0 whenever selection changes
   useLayoutEffect(() => {
@@ -102,14 +105,14 @@ export default function PrintPreview({
     }, 100);
   };
 
-  const activeItems = menuItems.filter((item) => selectedItemIds.includes(item.id));
+  const activeItems = safeMenuItems.filter((item) => safeItemIds.includes(item.id));
 
   const getCategory = (item: MenuItem) => (item.section || '').toLowerCase();
   const getSubtype = (item: MenuItem) => (item.subtype || '').toLowerCase();
   const getType = (item: MenuItem) => (item.type || '').toLowerCase();
 
-  const m6Item = menuItems.find((i) => (matchStr(i.short_name).includes('6oz') || matchStr(i.display_name).includes('6oz')) && (matchStr(i.type).includes('medallion') || matchStr(i.subtype).includes('medallion')));
-  const m9Item = menuItems.find((i) => (matchStr(i.short_name).includes('9oz') || matchStr(i.display_name).includes('9oz')) && (matchStr(i.type).includes('medallion') || matchStr(i.subtype).includes('medallion')));
+  const m6Item = safeMenuItems.find((i) => (matchStr(i.short_name).includes('6oz') || matchStr(i.display_name).includes('6oz')) && (matchStr(i.type).includes('medallion') || matchStr(i.subtype).includes('medallion')));
+  const m9Item = safeMenuItems.find((i) => (matchStr(i.short_name).includes('9oz') || matchStr(i.display_name).includes('9oz')) && (matchStr(i.type).includes('medallion') || matchStr(i.subtype).includes('medallion')));
 
   const medallion6ozPrice = m6Item ? prices[m6Item.id] ?? '0' : '0';
   const medallion9ozPrice = m9Item ? prices[m9Item.id] ?? '0' : '0';
@@ -182,19 +185,17 @@ export default function PrintPreview({
   // Continuous fine-grained shrinking component for individual item titles
   const AutoShrinkTitle = ({ text }: { text: string }) => {
     const textRef = useRef<HTMLDivElement>(null);
-    // Array of sizes from largest to smallest for smooth gradual down-scaling
     const fontSizes = ['text-sm', 'text-[13px]', 'text-xs', 'text-[11px]', 'text-[10px]', 'text-[9px]'];
     const [sizeIndex, setSizeIndex] = useState(0);
 
     useLayoutEffect(() => {
-      setSizeIndex(0); // Reset to largest
+      setSizeIndex(0);
     }, [text, activeFontLevelIndex]);
 
     useLayoutEffect(() => {
       const el = textRef.current;
       if (!el) return;
 
-      // If it overflows horizontally and we have smaller sizes available, step down one notch
       if (el.scrollWidth > el.clientWidth && sizeIndex < fontSizes.length - 1) {
         setSizeIndex((prev) => prev + 1);
       }
@@ -341,7 +342,6 @@ export default function PrintPreview({
         ref={containerRef}
         className="flex-1 flex items-center justify-center p-4 overflow-hidden"
       >
-        {/* Physical Paper Sheet Canvas (1056px x 816px) */}
         <div
           style={{
             width: '1056px',
@@ -351,23 +351,17 @@ export default function PrintPreview({
           }}
           className="physical-sheet bg-white shadow-2xl rounded relative flex flex-col border border-slate-300 p-[48px]"
         >
-          {/* Inner Printable Area Frame with Dotted Border */}
           <div className="printer-margin-border w-full h-full relative flex flex-col border border-dashed border-slate-400 bg-white p-0">
-            
-            {/* Center Cut/Fold Dashed Line */}
             <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-0.5 border-r border-dashed border-gray-400 z-10 pointer-events-none" />
 
-            {/* Content Container with fluid measurement ref */}
             <div ref={testContainerRef} className="flex w-full h-full justify-between items-stretch overflow-hidden">
               <SingleMenuCard />
               <SingleMenuCard />
             </div>
-
           </div>
         </div>
       </div>
 
-      {/* 30-Day Print Reminder Modal */}
       {showPrintModal && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg max-w-md w-full p-6 shadow-2xl space-y-4 text-gray-800">

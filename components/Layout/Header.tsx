@@ -2,19 +2,23 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { useRouter, usePathname } from 'next/navigation';
 import StoreSelectorDrawer from '@/components/Layout/StoreSelectorDrawer';
 
-interface HeaderProps {
-  activeTab?: 'editor' | 'users' | 'items' | 'settings';
-  setActiveTab?: (tab: 'editor' | 'users' | 'items' | 'settings') => void;
-}
-
-export default function Header({ activeTab = 'editor', setActiveTab }: HeaderProps) {
-  const { user, role, stores, selectedStore, changeStore, logout } = useAuth();
+export default function Header() {
+  const { role, stores, selectedStore, logout, changeStore, profile, user } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   const isSuperadmin = role === 'superadmin';
-  const isAdminOrSuperadmin = role === 'admin' || isSuperadmin;
+  const isSettings = pathname?.startsWith('/settings');
+
+  // Format the display name cleanly using the hook values fetched once above
+  const displayName =
+    profile?.first_name && profile?.last_name
+      ? `${profile.first_name.charAt(0)}. ${profile.last_name}`
+      : user?.email;
 
   return (
     <>
@@ -22,15 +26,13 @@ export default function Header({ activeTab = 'editor', setActiveTab }: HeaderPro
         <div className="flex items-center space-x-6">
           <h1 className="text-xl font-bold tracking-wide">Connor Concepts</h1>
 
-          {/* Store Selector */}
           {stores.length > 0 && (
             <div className="flex items-center space-x-2">
               <span className="text-xs text-slate-400">Store:</span>
-
               {isSuperadmin ? (
                 <button
                   onClick={() => setIsDrawerOpen(true)}
-                  className="bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 px-3 py-1.5 rounded text-sm transition flex items-center space-x-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 px-3 py-1.5 rounded text-sm transition flex items-center space-x-2 cursor-pointer"
                 >
                   <span className="font-medium">
                     {selectedStore ? selectedStore.name : 'Select Store...'}
@@ -44,7 +46,7 @@ export default function Header({ activeTab = 'editor', setActiveTab }: HeaderPro
                     const store = stores.find((s) => s.id === e.target.value);
                     if (store) changeStore(store);
                   }}
-                  className="bg-slate-800 text-white border border-slate-700 px-3 py-1.5 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="bg-slate-800 text-white border border-slate-700 px-3 py-1.5 rounded text-sm"
                 >
                   {stores.map((s) => (
                     <option key={s.id} value={s.id}>
@@ -56,60 +58,36 @@ export default function Header({ activeTab = 'editor', setActiveTab }: HeaderPro
             </div>
           )}
 
-          {/* Navigation Tabs */}
-          {setActiveTab && (
-            <nav className="flex items-center space-x-1 pl-4 border-l border-slate-800">
-              <button
-                onClick={() => setActiveTab('editor')}
-                className={`px-3 py-1.5 text-sm rounded font-medium transition ${
-                  activeTab === 'editor' ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-slate-800'
-                }`}
-              >
-                Menu Builder
-              </button>
-
-              {isAdminOrSuperadmin && (
-                <>
-                  <button
-                    onClick={() => setActiveTab('items')}
-                    className={`px-3 py-1.5 text-sm rounded font-medium transition ${
-                      activeTab === 'items' ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-slate-800'
-                    }`}
-                  >
-                    Menu Manager
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('users')}
-                    className={`px-3 py-1.5 text-sm rounded font-medium transition ${
-                      activeTab === 'users' ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-slate-800'
-                    }`}
-                  >
-                    User Manager
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('settings')}
-                    className={`px-3 py-1.5 text-sm rounded font-medium transition ${
-                      activeTab === 'settings' ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-slate-800'
-                    }`}
-                  >
-                    Settings
-                  </button>
-                </>
-              )}
-            </nav>
-          )}
+          {/* Navigation Links */}
+          <nav className="flex items-center space-x-1 pl-4 border-l border-slate-800">
+            <button
+              onClick={() => router.push('/')}
+              className={`px-3 py-1.5 text-sm rounded font-medium transition cursor-pointer ${
+                !isSettings ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-slate-800'
+              }`}
+            >
+              Menu Builder
+            </button>
+            <button
+              onClick={() => router.push('/settings')}
+              className={`px-3 py-1.5 text-sm rounded font-medium transition cursor-pointer ${
+                isSettings ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-slate-800'
+              }`}
+            >
+              Settings
+            </button>
+          </nav>
         </div>
 
-        {/* User Account Controls */}
+        {/* User Info & Sign Out */}
         <div className="flex items-center space-x-4">
           <div className="text-right text-xs">
-            <div className="font-semibold text-slate-200">{user?.email}</div>
+            <div className="font-semibold text-slate-200">{displayName}</div>
             <div className="text-slate-400 capitalize">{role} Role</div>
           </div>
-
           <button
             onClick={logout}
-            className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded border border-slate-700 transition"
+            className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded border border-slate-700 transition cursor-pointer"
           >
             Sign Out
           </button>

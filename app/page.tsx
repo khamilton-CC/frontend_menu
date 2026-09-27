@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
-import Header from '@/components/Layout/Header';
 import FeatureSidebar, { MenuItem } from '@/components/Sidebar/FeatureSidebar';
 import PrintPreview from '@/components/Layout/PrintPreview';
 
@@ -11,7 +10,6 @@ export default function Home() {
   const { user, token, selectedStore } = useAuth();
   const router = useRouter();
 
-  const [activeTab, setActiveTab] = useState<'editor' | 'users' | 'items' | 'settings'>('editor');
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
   const [prices, setPrices] = useState<Record<string, number>>({});
@@ -111,28 +109,6 @@ export default function Home() {
     await handlePriceBlur(targetItem.id, newPrice);
   };
 
-  const handlePrint = async () => {
-    if (selectedStore && token) {
-      try {
-        await fetch(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/store-menu/${selectedStore.id}`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({ selectedItemIds }),
-          }
-        );
-      } catch (err) {
-        console.error('Auto-save selections before print failed:', err);
-      }
-    }
-
-    window.print();
-  };
-
   if (!user) return null;
 
   const m6Item = menuItems.find(
@@ -150,50 +126,38 @@ export default function Home() {
   const medallion9ozPrice = m9Item ? prices[m9Item.id] ?? '' : '';
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-gray-100 text-gray-900 overflow-hidden">
-      <Header activeTab={activeTab} setActiveTab={setActiveTab} />
+    <div className="flex-1 flex h-full overflow-hidden">
+      <FeatureSidebar
+        menuItems={menuItems}
+        selectedItemIds={selectedItemIds}
+        prices={prices}
+        medallion6ozPrice={medallion6ozPrice}
+        medallion9ozPrice={medallion9ozPrice}
+        holidayTitle={holidayTitle}
+        hasHolidayFeature={selectedStore?.has_holiday_feature}
+        loading={loading}
+        onToggleSelection={(id) =>
+          setSelectedItemIds((prev) =>
+            prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+          )
+        }
+        onPriceChange={(id, price) =>
+          setPrices((prev) => ({ ...prev, [id]: Number(price) || 0 }))
+        }
+        onMedallionPriceChange={handleMedallionPriceChange}
+        onMedallionPriceBlur={handleMedallionPriceBlur}
+        onPriceBlur={handlePriceBlur}
+        onHolidayTitleChange={setHolidayTitle}
+      />
 
-      <div className="flex-1 flex h-full overflow-hidden">
-        {activeTab === 'editor' && (
-          <>
-            <FeatureSidebar
-              menuItems={menuItems}
-              selectedItemIds={selectedItemIds}
-              prices={prices}
-              medallion6ozPrice={medallion6ozPrice}
-              medallion9ozPrice={medallion9ozPrice}
-              holidayTitle={holidayTitle}
-              hasHolidayFeature={selectedStore?.has_holiday_feature}
-              loading={loading}
-              onToggleSelection={(id) =>
-                setSelectedItemIds((prev) =>
-                  prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
-                )
-              }
-              onPriceChange={(id, price) =>
-                setPrices((prev) => ({ ...prev, [id]: Number(price) || 0 }))
-              }
-              onMedallionPriceChange={handleMedallionPriceChange}
-              onMedallionPriceBlur={handleMedallionPriceBlur}
-              onPriceBlur={handlePriceBlur}
-              onHolidayTitleChange={setHolidayTitle}
-            />
-
-            <PrintPreview
-              storeName={selectedStore?.name}
-              hasHolidayFeature={selectedStore?.has_holiday_feature}
-              holidayTitle={holidayTitle}
-              menuItems={menuItems}
-              selectedItemIds={selectedItemIds}
-              prices={prices}
-            />
-          </>
-        )}
-
-        {activeTab === 'items' && <div className="p-8 overflow-y-auto flex-1">Menu Manager Component</div>}
-        {activeTab === 'users' && <div className="p-8 overflow-y-auto flex-1">User Manager Component</div>}
-        {activeTab === 'settings' && <div className="p-8 overflow-y-auto flex-1">Store Settings Component</div>}
-      </div>
+      <PrintPreview
+        storeName={selectedStore?.name}
+        hasHolidayFeature={selectedStore?.has_holiday_feature}
+        holidayTitle={holidayTitle}
+        menuItems={menuItems}
+        selectedItemIds={selectedItemIds}
+        prices={prices}
+      />
     </div>
   );
 }
