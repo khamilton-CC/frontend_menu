@@ -40,27 +40,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const syncTokenToLocalStorage = (token: string | null) => {
+    if (typeof window !== 'undefined') {
+      if (token) {
+        localStorage.setItem('cc_token', token);
+      } else {
+        localStorage.removeItem('cc_token');
+      }
+    }
+  };
+
   useEffect(() => {
     // 1. Fetch initial session on app load
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      if (session) fetchUserData(session.user);
-      setLoading(false);
+      syncTokenToLocalStorage(session?.access_token || null);
+
+      if (session) {
+        fetchUserData(session.user);
+      } else {
+        setLoading(false);
+      }
     });
 
     // 2. Listen for auth state changes (sign in, sign out, token refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
+      syncTokenToLocalStorage(session?.access_token || null);
+
       if (session) {
         fetchUserData(session.user);
       } else {
         setStores([]);
         setProfile(null);
         setSelectedStore(null);
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
@@ -70,6 +87,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
+
+      // Sync token before network call
+      syncTokenToLocalStorage(session.access_token);
 
       const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
 
@@ -101,11 +121,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     } catch (err) {
       console.error('Error fetching user data:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
   const logout = async () => {
     await supabase.auth.signOut();
+    syncTokenToLocalStorage(null);
     localStorage.removeItem('cc_selected_store');
     setUser(null);
     setSession(null);
