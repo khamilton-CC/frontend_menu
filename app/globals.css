@@ -24,3 +24,31 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+@media print {
+  @page {
+    size: landscape;
+    /* Forces landscape automatically in Chrome/Edge/Safari */
+    margin: 0.5in;
+    /* Sets the strict 0.5-inch margin around the entire page */
+  }
+
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body,
+  html {
+    width: 100% !important;
+    height: 100% !important;
+    background-color: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+}
