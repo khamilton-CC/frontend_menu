@@ -151,18 +151,18 @@ export default function PrintPreview({
   );
 
   const rawChefItems = activeItems
-    .filter(
-      (item) =>
-        !item.is_holiday_only &&
-        (getCategory(item).includes('chef') ||
-          getCategory(item).includes('entree') ||
-          getCategory(item).includes('steak') ||
-          getCategory(item).includes('fish'))
-    )
-    .map((item) => ({
-      ...item,
-      price: prices[item.id] ?? 0,
-    }));
+  .filter(
+    (item) =>
+      !item.is_holiday_only &&
+      (getCategory(item).includes('chef') ||
+        getCategory(item).includes('entree') ||
+        getCategory(item).includes('steak') ||
+        getCategory(item).includes('fish'))
+  )
+  .map((item) => ({
+    ...item,
+    price: Number(prices[item.id] ?? 0),
+  }));
 
   const chefSelections = sortEntreesForMenu(rawChefItems);
 

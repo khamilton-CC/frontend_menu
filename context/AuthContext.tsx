@@ -14,11 +14,12 @@ interface AuthContextType {
   user: SupabaseUser | null;
   session: Session | null;
   token: string | null;
-  role: 'admin' | 'user';
+  role: 'admin' | 'user' | 'superadmin';
   stores: Store[];
   selectedStore: Store | null;
   logout: () => Promise<void>;
   changeStore: (store: Store) => void;
+  fetchUserData: (currentUser: SupabaseUser) => Promise<void>; // <--- Add this line
   loading: boolean;
 }
 
@@ -29,7 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [stores, setStores] = useState<Store[]>([]);
   const [selectedStore, setSelectedStore] = useState<Store | null>(null);
-  const [role, setRole] = useState<'admin' | 'user'>('user');
+  const [role, setRole] = useState<'admin' | 'user' | 'superadmin'>('user');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -119,6 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         selectedStore,
         logout,
         changeStore,
+        fetchUserData,
         loading,
       }}
     >
