@@ -12,7 +12,7 @@ export default function Home() {
 
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
-  const [prices, setPrices] = useState<Record<string, number>>({});
+  const [prices, setPrices] = useState<Record<string, number | string>>({});
 
   const [holidayTitle, setHolidayTitle] = useState('Holiday Specials');
   const [loading, setLoading] = useState(true);
@@ -72,10 +72,15 @@ export default function Home() {
     fetchData();
   }, [selectedStore, token]);
 
+  const handlePriceChange = (id: string, price: number | string) => {
+    setPrices((prev) => ({ ...prev, [id]: price }));
+  };
+
   const handlePriceBlur = async (itemId: string, newPrice: number | string) => {
     if (!selectedStore?.id || !token) return;
 
-    setPrices((prev) => ({ ...prev, [itemId]: Number(newPrice) || 0 }));
+    const numericPrice = Number(newPrice) || 0;
+    setPrices((prev) => ({ ...prev, [itemId]: numericPrice }));
 
     try {
       await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/menu/price`, {
@@ -87,7 +92,7 @@ export default function Home() {
         body: JSON.stringify({
           storeId: selectedStore.id,
           itemId: itemId,
-          price: newPrice,
+          price: numericPrice,
         }),
       });
     } catch (err) {
@@ -104,7 +109,7 @@ export default function Home() {
 
     if (!targetItem) return;
 
-    setPrices((prev) => ({ ...prev, [targetItem.id]: Number(newPrice) || 0 }));
+    setPrices((prev) => ({ ...prev, [targetItem.id]: newPrice }));
   };
 
   const handleMedallionPriceBlur = async (size: '6oz' | '9oz', newPrice: number | string) => {
@@ -160,9 +165,7 @@ export default function Home() {
             prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
           )
         }
-        onPriceChange={(id, price) =>
-          setPrices((prev) => ({ ...prev, [id]: Number(price) || 0 }))
-        }
+        onPriceChange={handlePriceChange}
         onMedallionPriceChange={handleMedallionPriceChange}
         onMedallionPriceBlur={handleMedallionPriceBlur}
         onPriceBlur={handlePriceBlur}
@@ -170,6 +173,7 @@ export default function Home() {
       />
 
       <PrintPreview
+        storeId={selectedStore?.id}
         storeName={selectedStore?.nickname || selectedStore?.name}
         hasHolidayFeature={selectedStore?.has_holiday_feature}
         holidayTitle={holidayTitle}

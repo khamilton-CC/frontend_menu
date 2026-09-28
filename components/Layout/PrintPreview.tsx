@@ -3,8 +3,10 @@
 import React, { useEffect, useRef, useState, useLayoutEffect, useMemo } from 'react';
 import { MenuItem } from '../Sidebar/FeatureSidebar';
 import { sortEntreesForMenu } from '@/lib/menuOrdering';
+import { api } from '@/lib/api';
 
 interface PrintPreviewProps {
+  storeId?: string;
   storeName?: string;
   hasHolidayFeature?: boolean;
   holidayTitle?: string;
@@ -29,6 +31,7 @@ const TYPOGRAPHY_LEVELS = [
 ];
 
 export default function PrintPreview({
+  storeId,
   hasHolidayFeature,
   holidayTitle = 'Holiday Specials',
   menuItems,
@@ -42,12 +45,50 @@ export default function PrintPreview({
   const [showPrintModal, setShowPrintModal] = useState(false);
   
   const [activeLevelIndex, setActiveLevelIndex] = useState(0);
+  const [userLevelOverride, setUserLevelOverride] = useState<number | null>(null);
   const [titleScaleFactors, setTitleScaleFactors] = useState<Record<string, number>>({});
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
 
   const safeMenuItems = Array.isArray(menuItems) ? menuItems : [];
   const safeItemIds = Array.isArray(selectedItemIds) ? selectedItemIds : [];
   const selectionKey = useMemo(() => safeItemIds.slice().sort().join(','), [safeItemIds]);
   const pricesKey = useMemo(() => JSON.stringify(prices), [prices]);
+
+  // Explicit Manual Save Handler (Floppy Disk)
+  const handleManualSave = async () => {
+    if (!storeId) {
+      console.warn('Cannot save: storeId is missing');
+      return;
+    }
+    setIsSaving(true);
+    setSaveStatus('idle');
+    try {
+      await api.saveStoreFeatureMenu(storeId, safeItemIds);
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus('idle'), 2500);
+    } catch (err: any) {
+      console.error('Failed manual save:', err?.message || err);
+      setSaveStatus('error');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Sync menu changes back to backend automatically when selections change
+  useEffect(() => {
+    if (!storeId) return;
+
+    const saveMenuToBackend = async () => {
+      try {
+        await api.saveStoreFeatureMenu(storeId, safeItemIds);
+      } catch (err: any) {
+        console.error('Failed to sync menu selections to backend:', err?.message || err);
+      }
+    };
+
+    saveMenuToBackend();
+  }, [storeId, selectionKey]);
 
   // Viewport scaling
   useEffect(() => {
@@ -73,6 +114,8 @@ export default function PrintPreview({
 
   // Pass 1: Measure natural stacked height and step down if it exceeds available sheet height
   useLayoutEffect(() => {
+    if (userLevelOverride !== null) return;
+
     const el = cardMeasureRef.current;
     if (!el) return;
 
@@ -96,7 +139,11 @@ export default function PrintPreview({
     }
 
     setActiveLevelIndex(bestIndex);
-  }, [selectionKey, hasHolidayFeature, pricesKey]);
+  }, [selectionKey, hasHolidayFeature, pricesKey, userLevelOverride]);
+
+  useEffect(() => {
+    setUserLevelOverride(null);
+  }, [selectionKey, pricesKey, hasHolidayFeature]);
 
   // Pass 2: Check horizontal overflow cleanly using actual clientWidth
   useLayoutEffect(() => {
@@ -138,7 +185,28 @@ export default function PrintPreview({
 
   const currentStyles = TYPOGRAPHY_LEVELS[activeLevelIndex];
 
-  const handlePrintClick = () => {
+  const handleSizeUp = () => {
+    const nextIndex = Math.max(0, activeLevelIndex - 1);
+    setUserLevelOverride(nextIndex);
+    setActiveLevelIndex(nextIndex);
+  };
+
+  const handleSizeDown = () => {
+    const nextIndex = Math.min(TYPOGRAPHY_LEVELS.length - 1, activeLevelIndex + 1);
+    setUserLevelOverride(nextIndex);
+    setActiveLevelIndex(nextIndex);
+  };
+
+  const handlePrintClick = async () => {
+    // Autosave right before printing just in case
+    if (storeId) {
+      try {
+        await api.saveStoreFeatureMenu(storeId, safeItemIds);
+      } catch (err) {
+        console.error('Autosave on print failed:', err);
+      }
+    }
+
     const lastPrintTime = localStorage.getItem('last_menu_print_timestamp');
     const thirtyDaysInMs = 30 * 24 * 60 * 60 * 1000;
     const now = Date.now();
@@ -416,14 +484,51 @@ export default function PrintPreview({
       `}} />
 
       <div className="no-print bg-slate-100 border-b border-slate-300 px-6 py-2.5 flex justify-between items-center shrink-0 shadow-sm">
-        <span className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Live Fit-to-View Print Preview</span>
-        <button
-          onClick={handlePrintClick}
-          className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-5 py-1.5 rounded text-sm shadow transition flex items-center space-x-1.5 cursor-pointer"
-        >
-          <span>🖨️</span>
-          <span>Print Menu (2-Up)</span>
-        </button>
+        <div className="flex items-center space-x-4">
+          <span className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Live Fit-to-View Print Preview</span>
+          
+          {/* Manual Size Steps Controller */}
+          <div className="flex items-center space-x-1.5 bg-white border border-slate-300 rounded px-2 py-1 shadow-sm">
+            <span className="text-xs text-slate-500 font-medium">Size Step: {activeLevelIndex + 1}/{TYPOGRAPHY_LEVELS.length}</span>
+            <button
+              onClick={handleSizeUp}
+              disabled={activeLevelIndex === 0}
+              title="Make text larger (Size Up)"
+              className="px-1.5 py-0.5 text-xs bg-slate-100 hover:bg-slate-200 disabled:opacity-40 rounded text-slate-700 font-bold cursor-pointer"
+            >
+              ▲
+            </button>
+            <button
+              onClick={handleSizeDown}
+              disabled={activeLevelIndex === TYPOGRAPHY_LEVELS.length - 1}
+              title="Make text smaller (Size Down)"
+              className="px-1.5 py-0.5 text-xs bg-slate-100 hover:bg-slate-200 disabled:opacity-40 rounded text-slate-700 font-bold cursor-pointer"
+            >
+              ▼
+            </button>
+          </div>
+        </div>
+
+        <div className="flex items-center space-x-3">
+          {/* Manual Floppy Disk Save Button */}
+          <button
+            onClick={handleManualSave}
+            disabled={isSaving}
+            title="Save Menu Selections"
+            className="bg-slate-700 hover:bg-slate-800 text-white font-medium px-3.5 py-1.5 rounded text-sm shadow transition flex items-center space-x-1.5 cursor-pointer disabled:opacity-50"
+          >
+            <span>💾</span>
+            <span>{isSaving ? 'Saving...' : saveStatus === 'saved' ? 'Saved! ✓' : 'Save'}</span>
+          </button>
+
+          <button
+            onClick={handlePrintClick}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-5 py-1.5 rounded text-sm shadow transition flex items-center space-x-1.5 cursor-pointer"
+          >
+            <span>🖨️</span>
+            <span>Print Menu (2-Up)</span>
+          </button>
+        </div>
       </div>
 
       <div ref={containerRef} className="flex-1 flex items-center justify-center p-4 overflow-hidden">
@@ -441,23 +546,23 @@ export default function PrintPreview({
             <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-4 border-l border-slate-400 z-10 pointer-events-none" />
 
             {/* Left Column - Centered Vertically */}
-<div ref={leftColumnRef} className="w-1/2 h-full pt-4 pb-4 pl-2 pr-[24px] flex flex-col justify-center box-border overflow-hidden">
-  <CardContent styleVars={currentCSSVars} />
-</div>
+            <div ref={leftColumnRef} className="w-1/2 h-full pt-4 pb-4 pl-2 pr-[24px] flex flex-col justify-center box-border overflow-hidden">
+              <CardContent styleVars={currentCSSVars} />
+            </div>
 
-{/* Right Column - Centered Vertically */}
-<div className="w-1/2 h-full pt-4 pb-4 pl-[24px] pr-2 flex flex-col justify-center box-border overflow-hidden">
-  <CardContent styleVars={currentCSSVars} />
-</div>
+            {/* Right Column - Centered Vertically */}
+            <div className="w-1/2 h-full pt-4 pb-4 pl-[24px] pr-2 flex flex-col justify-center box-border overflow-hidden">
+              <CardContent styleVars={currentCSSVars} />
+            </div>
 
             {/* Measurement Div - Mirrors exact vertical alignment flow */}
-<div
-  ref={cardMeasureRef}
-  style={{ width: 'calc(50% - 16px)' }}
-  className="absolute left-0 top-0 pointer-events-none opacity-0 invisible pl-2 pr-[24px] pt-4 pb-4 box-border flex flex-col justify-center"
->
-  <CardContent />
-</div>
+            <div
+              ref={cardMeasureRef}
+              style={{ width: 'calc(50% - 16px)' }}
+              className="absolute left-0 top-0 pointer-events-none opacity-0 invisible pl-2 pr-[24px] pt-4 pb-4 box-border flex flex-col justify-center"
+            >
+              <CardContent />
+            </div>
           </div>
         </div>
       </div>

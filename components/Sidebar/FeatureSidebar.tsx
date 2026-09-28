@@ -131,6 +131,8 @@ export default function FeatureSidebar({
         {items.map((item) => {
           const isSelected = selectedItemIds.includes(item.id);
           const rawPrice = prices[item.id];
+          
+          // Use direct string value so typing dots or trailing zeros isn't blocked
           const displayPrice = rawPrice !== undefined && rawPrice !== null ? String(rawPrice) : '';
 
           return (
@@ -158,7 +160,7 @@ export default function FeatureSidebar({
                     value={displayPrice}
                     placeholder="0"
                     onChange={(e) => onPriceChange(item.id, e.target.value)}
-                    onBlur={() => onPriceBlur(item.id, prices[item.id] ?? '')}
+                    onBlur={(e) => onPriceBlur(item.id, e.target.value)}
                     className="w-14 text-right border p-1 rounded text-xs text-gray-800 font-semibold focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
                 </div>
@@ -266,7 +268,7 @@ export default function FeatureSidebar({
                           <input
                             type="text"
                             inputMode="decimal"
-                            value={String(medallion6ozPrice ?? '')}
+                            value={medallion6ozPrice !== undefined && medallion6ozPrice !== null ? String(medallion6ozPrice) : ''}
                             placeholder="0"
                             onChange={(e) => onMedallionPriceChange?.('6oz', e.target.value)}
                             onBlur={(e) => onMedallionPriceBlur?.('6oz', e.target.value)}
@@ -278,7 +280,7 @@ export default function FeatureSidebar({
                           <input
                             type="text"
                             inputMode="decimal"
-                            value={String(medallion9ozPrice ?? '')}
+                            value={medallion9ozPrice !== undefined && medallion9ozPrice !== null ? String(medallion9ozPrice) : ''}
                             placeholder="0"
                             onChange={(e) => onMedallionPriceChange?.('9oz', e.target.value)}
                             onBlur={(e) => onMedallionPriceBlur?.('9oz', e.target.value)}

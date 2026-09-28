@@ -73,6 +73,13 @@ class ApiClient {
     });
   }
 
+  async saveStoreFeatureMenu(storeId: string, selectedItemIds: string[]) {
+    return this.request<{ success: boolean; message: string }>(`/api/store-menu/${storeId}`, {
+      method: 'POST',
+      body: JSON.stringify({ selectedItemIds }),
+    });
+  }
+
   // --- ADMIN & USER MANAGEMENT ENDPOINTS ---
   async getUsers() {
     return this.request<{ users: any[] }>('/api/admin/users');
