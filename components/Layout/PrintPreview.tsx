@@ -71,7 +71,7 @@ export default function PrintPreview({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Pass 1: Height Measurement Pass with forced nowrap on test node
+  // Pass 1: Height Measurement Pass
   useLayoutEffect(() => {
     const el = cardMeasureRef.current;
     if (!el) return;
@@ -98,7 +98,7 @@ export default function PrintPreview({
     setActiveLevelIndex(bestIndex);
   }, [selectionKey, hasHolidayFeature, pricesKey]);
 
-  // Pass 2: Check horizontal overflow for individual titles and downscale by 0.5px until they fit
+  // Pass 2: Check horizontal overflow for individual titles & item headings
   useLayoutEffect(() => {
     const colEl = leftColumnRef.current;
     if (!colEl) return;
@@ -107,20 +107,20 @@ export default function PrintPreview({
     const titleNodes = colEl.querySelectorAll<HTMLElement>('[data-title-id]');
     const newScales: Record<string, number> = {};
 
+    const currentLevel = TYPOGRAPHY_LEVELS[activeLevelIndex];
+
     titleNodes.forEach((node) => {
       const id = node.getAttribute('data-title-id');
+      const type = node.getAttribute('data-title-type'); // 'header' or 'item'
       if (!id) return;
 
-      // Temporarily clear any previous scale factor to read the baseline size from CSS variables
-      node.style.fontSize = '';
-      const baseFontSize = parseFloat(window.getComputedStyle(node).fontSize);
+      const baseFontSize = type === 'header' ? currentLevel.headerSize : currentLevel.itemSize;
       let currentFontSize = baseFontSize;
 
-      // Force nowrap during check
+      node.style.fontSize = `${currentFontSize}px`;
       const originalWhiteSpace = node.style.whiteSpace;
       node.style.whiteSpace = 'nowrap';
 
-      // Step down by 0.5px until it fits within available width or hits minimum size (9px)
       while (node.scrollWidth > availableWidth && currentFontSize > 9) {
         currentFontSize -= 0.5;
         node.style.fontSize = `${currentFontSize}px`;
@@ -259,6 +259,7 @@ export default function PrintPreview({
         >
           <h2
             data-title-id={sectionId}
+            data-title-type="header"
             style={{ fontSize: computedFontSize }}
             className={`font-bold border-b-2 pb-0.5 inline-block px-3 uppercase tracking-wider ${customColorClass} whitespace-nowrap`}
           >
@@ -275,6 +276,7 @@ export default function PrintPreview({
       return (
         <div
           data-title-id={item.id}
+          data-title-type="item"
           style={{ fontSize: computedFontSize }}
           className="font-bold text-gray-900 leading-tight whitespace-nowrap"
         >
