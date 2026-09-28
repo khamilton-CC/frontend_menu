@@ -50,7 +50,6 @@ export default function PrintPreview({
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
 
-  // Guard to prevent autosaving empty arrays before the store's initial menu loads
   const hasHydratedRef = useRef(false);
 
   const safeMenuItems = Array.isArray(menuItems) ? menuItems : [];
@@ -58,19 +57,16 @@ export default function PrintPreview({
   const selectionKey = useMemo(() => safeItemIds.slice().sort().join(','), [safeItemIds]);
   const pricesKey = useMemo(() => JSON.stringify(prices), [prices]);
 
-  // Once items are successfully passed down and non-empty (or store changes), mark as hydrated
   useEffect(() => {
     if (safeItemIds.length > 0) {
       hasHydratedRef.current = true;
     }
   }, [selectionKey]);
 
-  // Reset hydration guard when switching stores
   useEffect(() => {
     hasHydratedRef.current = false;
   }, [storeId]);
 
-  // Explicit Manual Save Handler (Floppy Disk) - Updates existing store file
   const handleManualSave = async () => {
     if (!storeId) {
       console.warn('Cannot save: storeId is missing');
@@ -90,10 +86,9 @@ export default function PrintPreview({
     }
   };
 
-  // Sync menu updates back to backend automatically only AFTER initial hydration
   useEffect(() => {
     if (!storeId) return;
-    if (!hasHydratedRef.current) return; // Skip saving until data has loaded from backend
+    if (!hasHydratedRef.current) return;
 
     const saveMenuToBackend = async () => {
       try {
@@ -106,7 +101,6 @@ export default function PrintPreview({
     saveMenuToBackend();
   }, [storeId, selectionKey]);
 
-  // Viewport scaling
   useEffect(() => {
     const handleResize = () => {
       if (!containerRef.current) return;
@@ -128,7 +122,7 @@ export default function PrintPreview({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Pass 1: Measure natural stacked height and step down if it exceeds available sheet height
+  // Pass 1: Measure vertical stack height
   useLayoutEffect(() => {
     if (userLevelOverride !== null) return;
 
@@ -161,12 +155,13 @@ export default function PrintPreview({
     setUserLevelOverride(null);
   }, [selectionKey, pricesKey, hasHolidayFeature]);
 
-  // Pass 2: Check horizontal overflow cleanly using actual clientWidth (including Ice Cream single-line section)
+  // Pass 2: Horizontal overflow check with safety boundary buffer for items & ice cream line
   useLayoutEffect(() => {
     const colEl = leftColumnRef.current;
     if (!colEl) return;
 
-    const availableWidth = colEl.clientWidth;
+    // Subtract a 16px safety margin (8px padding on each side) to guarantee no overflow past column bounds
+    const availableWidth = colEl.clientWidth - 16;
     const titleNodes = colEl.querySelectorAll<HTMLElement>('[data-title-id]');
     const newScales: Record<string, number> = {};
 
@@ -184,7 +179,7 @@ export default function PrintPreview({
       const originalWhiteSpace = node.style.whiteSpace;
       node.style.whiteSpace = 'nowrap';
 
-      while (node.scrollWidth > availableWidth && currentFontSize > 11) {
+      while (node.scrollWidth > availableWidth && currentFontSize > 10) {
         currentFontSize -= 0.5;
         node.style.fontSize = `${currentFontSize}px`;
       }
