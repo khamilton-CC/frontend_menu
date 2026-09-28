@@ -50,12 +50,27 @@ export default function PrintPreview({
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
 
+  // Guard to prevent autosaving empty arrays before the store's initial menu loads
+  const hasHydratedRef = useRef(false);
+
   const safeMenuItems = Array.isArray(menuItems) ? menuItems : [];
   const safeItemIds = Array.isArray(selectedItemIds) ? selectedItemIds : [];
   const selectionKey = useMemo(() => safeItemIds.slice().sort().join(','), [safeItemIds]);
   const pricesKey = useMemo(() => JSON.stringify(prices), [prices]);
 
-  // Explicit Manual Save Handler (Floppy Disk)
+  // Once items are successfully passed down and non-empty (or store changes), mark as hydrated
+  useEffect(() => {
+    if (safeItemIds.length > 0) {
+      hasHydratedRef.current = true;
+    }
+  }, [selectionKey]);
+
+  // Reset hydration guard when switching stores
+  useEffect(() => {
+    hasHydratedRef.current = false;
+  }, [storeId]);
+
+  // Explicit Manual Save Handler (Floppy Disk) - Updates existing store file
   const handleManualSave = async () => {
     if (!storeId) {
       console.warn('Cannot save: storeId is missing');
@@ -75,9 +90,10 @@ export default function PrintPreview({
     }
   };
 
-  // Sync menu changes back to backend automatically when selections change
+  // Sync menu updates back to backend automatically only AFTER initial hydration
   useEffect(() => {
     if (!storeId) return;
+    if (!hasHydratedRef.current) return; // Skip saving until data has loaded from backend
 
     const saveMenuToBackend = async () => {
       try {
@@ -145,7 +161,7 @@ export default function PrintPreview({
     setUserLevelOverride(null);
   }, [selectionKey, pricesKey, hasHolidayFeature]);
 
-  // Pass 2: Check horizontal overflow cleanly using actual clientWidth
+  // Pass 2: Check horizontal overflow cleanly using actual clientWidth (including Ice Cream single-line section)
   useLayoutEffect(() => {
     const colEl = leftColumnRef.current;
     if (!colEl) return;
@@ -198,7 +214,6 @@ export default function PrintPreview({
   };
 
   const handlePrintClick = async () => {
-    // Autosave right before printing just in case
     if (storeId) {
       try {
         await api.saveStoreFeatureMenu(storeId, safeItemIds);
@@ -430,9 +445,16 @@ export default function PrintPreview({
         {desserts.length > 0 && (
           <div className="w-full">
             {renderHeader('Homemade Ice Cream', 'sec-desserts')}
-            <p style={{ fontSize: 'var(--item-size, 16px)' }} className="font-bold text-gray-800 tracking-wide mt-1 px-1 whitespace-nowrap">
+            <div
+              data-title-id="sec-desserts-line"
+              data-title-type="item"
+              style={{
+                fontSize: `calc(var(--item-size, 16px) * ${titleScaleFactors['sec-desserts-line'] ?? 1})`,
+              }}
+              className="font-bold text-gray-800 tracking-wide mt-1 px-1 whitespace-nowrap"
+            >
               {desserts.map((item) => item.display_name).join(' • ')}
-            </p>
+            </div>
           </div>
         )}
       </div>
@@ -487,7 +509,6 @@ export default function PrintPreview({
         <div className="flex items-center space-x-4">
           <span className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Live Fit-to-View Print Preview</span>
           
-          {/* Manual Size Steps Controller */}
           <div className="flex items-center space-x-1.5 bg-white border border-slate-300 rounded px-2 py-1 shadow-sm">
             <span className="text-xs text-slate-500 font-medium">Size Step: {activeLevelIndex + 1}/{TYPOGRAPHY_LEVELS.length}</span>
             <button
@@ -510,7 +531,6 @@ export default function PrintPreview({
         </div>
 
         <div className="flex items-center space-x-3">
-          {/* Manual Floppy Disk Save Button */}
           <button
             onClick={handleManualSave}
             disabled={isSaving}
@@ -545,17 +565,14 @@ export default function PrintPreview({
             <div className="absolute top-0 left-1/2 -translate-x-1/2 h-4 border-l border-slate-400 z-10 pointer-events-none" />
             <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-4 border-l border-slate-400 z-10 pointer-events-none" />
 
-            {/* Left Column - Centered Vertically */}
             <div ref={leftColumnRef} className="w-1/2 h-full pt-4 pb-4 pl-2 pr-[24px] flex flex-col justify-center box-border overflow-hidden">
               <CardContent styleVars={currentCSSVars} />
             </div>
 
-            {/* Right Column - Centered Vertically */}
             <div className="w-1/2 h-full pt-4 pb-4 pl-[24px] pr-2 flex flex-col justify-center box-border overflow-hidden">
               <CardContent styleVars={currentCSSVars} />
             </div>
 
-            {/* Measurement Div - Mirrors exact vertical alignment flow */}
             <div
               ref={cardMeasureRef}
               style={{ width: 'calc(50% - 16px)' }}
