@@ -1,17 +1,50 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import UserManager from '@/components/Admin/UserManager';
 import MenuManager from '@/components/Admin/MenuManager';
 import StoreSettings from '@/components/Admin/StoreSettings';
 
 export default function SettingsPage() {
-  const { user } = useAuth();
+  const { role, user } = useAuth();
   const [subTab, setSubTab] = useState<'users' | 'menu' | 'stores'>('users');
+
+  // If role is admin, force subTab to users
+  useEffect(() => {
+    if (role === 'admin') {
+      setSubTab('users');
+    }
+  }, [role]);
 
   if (!user) return null;
 
+  // 1. If user role is 'user', display access denied message
+  if (role === 'user') {
+    return (
+      <div className="flex-1 flex items-center justify-center bg-gray-50 p-6">
+        <div className="bg-white border border-gray-200 rounded-lg p-8 shadow-sm max-w-md text-center">
+          <h2 className="text-lg font-bold text-gray-800 mb-2">Access Restricted</h2>
+          <p className="text-sm text-gray-600">
+            This is an admin page, please ask your regional manager for access.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. If role is 'admin', render UserManager directly without tabs
+  if (role === 'admin') {
+    return (
+      <div className="flex-1 flex flex-col h-full bg-gray-50 overflow-hidden">
+        <div className="flex-1 overflow-y-auto p-8">
+          <UserManager />
+        </div>
+      </div>
+    );
+  }
+
+  // 3. Superadmin view with all tabs
   return (
     <div className="flex-1 flex flex-col h-full bg-gray-50 overflow-hidden">
       {/* Filing Cabinet Sub-Navigation Bar */}

@@ -8,7 +8,7 @@ interface UserRecord {
   email: string;
   first_name: string;
   last_name: string;
-  role: 'admin' | 'superadmin';
+  role: 'user' | 'admin' | 'superadmin';
   primary_store_id?: string;
   store_ids: string[];
 }
@@ -46,23 +46,23 @@ export default function UserManager() {
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
 
   // Edit Form States
-  const [editFirstName, setEditFirstName] = useState('');
-  const [editLastName, setEditLastName] = useState('');
-  const [editRole, setEditRole] = useState<'admin' | 'superadmin'>('admin');
-  const [editPrimaryStoreId, setEditPrimaryStoreId] = useState('');
-  const [editStoreIds, setEditStoreIds] = useState<string[]>([]);
+const [editFirstName, setEditFirstName] = useState('');
+const [editLastName, setEditLastName] = useState('');
+const [editRole, setEditRole] = useState<'user' | 'admin' | 'superadmin'>('user');
+const [editPrimaryStoreId, setEditPrimaryStoreId] = useState('');
+const [editStoreIds, setEditStoreIds] = useState<string[]>([]);
 
-  // Password Reset Form State
-  const [overridePassword, setOverridePassword] = useState('');
+// Password Reset Form State
+const [overridePassword, setOverridePassword] = useState('');
 
-  // Create Form States
-  const [newEmail, setNewEmail] = useState('');
-  const [newFirstName, setNewFirstName] = useState('');
-  const [newLastName, setNewLastName] = useState('');
-  const [newPasswordCreate, setNewPasswordCreate] = useState('');
-  const [newRole, setNewRole] = useState<'admin' | 'superadmin'>('admin');
-  const [newPrimaryStore, setNewPrimaryStore] = useState('');
-  const [newAssignedStores, setNewAssignedStores] = useState<string[]>([]);
+// Create Form States
+const [newEmail, setNewEmail] = useState('');
+const [newFirstName, setNewFirstName] = useState('');
+const [newLastName, setNewLastName] = useState('');
+const [newPasswordCreate, setNewPasswordCreate] = useState('');
+const [newRole, setNewRole] = useState<'user' | 'admin' | 'superadmin'>('user');
+const [newPrimaryStore, setNewPrimaryStore] = useState('');
+const [newAssignedStores, setNewAssignedStores] = useState<string[]>([]);
 
   useEffect(() => {
     fetchUsersAndStores();
@@ -615,11 +615,12 @@ export default function UserManager() {
           <select
             value={editRole}
             disabled={!isSuperadmin}
-            onChange={(e) => setEditRole(e.target.value as 'admin' | 'superadmin')}
+            onChange={(e) => setEditRole(e.target.value as 'user' | 'admin' | 'superadmin')}
             className={`w-full px-3 py-2 text-sm border border-slate-400 rounded-md font-semibold focus:outline-none focus:ring-2 focus:ring-blue-600 ${
               !isSuperadmin ? 'bg-slate-100 text-slate-500 cursor-not-allowed border-slate-300' : 'bg-white text-slate-900'
             }`}
           >
+            <option value="user">User</option>
             <option value="admin">Admin</option>
             <option value="superadmin">Superadmin</option>
           </select>
@@ -912,9 +913,10 @@ export default function UserManager() {
                 <label className="block text-xs font-bold text-slate-800 mb-1">Role</label>
                 <select
                   value={newRole}
-                  onChange={(e) => setNewRole(e.target.value as 'admin' | 'superadmin')}
+                  onChange={(e) => setNewRole(e.target.value as 'user' | 'admin' | 'superadmin')}
                   className="w-full px-3 py-2 text-sm border border-slate-400 rounded-md bg-white text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-600"
                 >
+                  <option value="user">User</option>
                   <option value="admin">Admin</option>
                   <option value="superadmin">Superadmin</option>
                 </select>

@@ -12,6 +12,8 @@ export default function Header() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   const isSuperadmin = role === 'superadmin';
+  const isAdmin = role === 'admin';
+  const isUser = role === 'user';
   const isSettings = pathname?.startsWith('/settings');
 
   // Format display name cleanly
@@ -68,14 +70,17 @@ export default function Header() {
             >
               Menu Builder
             </button>
-            <button
-              onClick={() => router.push('/settings')}
-              className={`px-3 py-1.5 text-sm rounded font-medium transition cursor-pointer ${
-                isSettings ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-slate-800'
-              }`}
-            >
-              Settings
-            </button>
+            {/* Settings button hidden for standard users */}
+            {!isUser && (
+              <button
+                onClick={() => router.push('/settings')}
+                className={`px-3 py-1.5 text-sm rounded font-medium transition cursor-pointer ${
+                  isSettings ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-slate-800'
+                }`}
+              >
+                Settings
+              </button>
+            )}
           </nav>
         </div>
 

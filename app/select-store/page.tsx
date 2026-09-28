@@ -12,9 +12,14 @@ interface StoreOption {
 }
 
 export default function SelectStorePage() {
-  const { user, stores, token, fetchUserData } = useAuth();
+  const { user, stores, token, fetchUserData, profile } = useAuth();
   const [availableStores, setAvailableStores] = useState<StoreOption[]>([]);
   const [selectedStoreId, setSelectedStoreId] = useState('');
+  
+  // New state fields for capturing names if they are missing
+  const [firstName, setFirstName] = useState(profile?.first_name || '');
+  const [lastName, setLastName] = useState(profile?.last_name || '');
+  
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
@@ -44,6 +49,12 @@ export default function SelectStorePage() {
     e.preventDefault();
     if (!selectedStoreId) return;
 
+    // Optional: Validate that names are filled out if they are blank in the profile
+    if (!firstName.trim() || !lastName.trim()) {
+      setError('Please provide your first and last name.');
+      return;
+    }
+
     setLoading(true);
     setError('');
 
@@ -56,13 +67,17 @@ export default function SelectStorePage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ storeId: selectedStoreId }),
+        body: JSON.stringify({ 
+          storeId: selectedStoreId,
+          first_name: firstName.trim(),
+          last_name: lastName.trim()
+        }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to set primary store.');
+        throw new Error(data.error || 'Failed to set account details.');
       }
 
       if (user) {
@@ -82,12 +97,38 @@ export default function SelectStorePage() {
       <div className="bg-white p-6 rounded-lg shadow-md w-full max-w-md border border-gray-200">
         <h2 className="text-xl font-bold text-gray-800 mb-1 text-center">Welcome to Connor Concepts</h2>
         <p className="text-xs text-gray-500 mb-6 text-center">
-          Please select your primary store location to finish setting up your account.
+          Please complete your profile and select your primary store location.
         </p>
 
         {error && <div className="bg-red-100 text-red-700 p-2 text-xs rounded mb-4">{error}</div>}
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Name Fields */}
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">First Name</label>
+              <input
+                type="text"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                required
+                placeholder="First Name"
+                className="w-full border p-2 rounded text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Last Name</label>
+              <input
+                type="text"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                required
+                placeholder="Last Name"
+                className="w-full border p-2 rounded text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              />
+            </div>
+          </div>
+
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">Primary Store Location</label>
             <select
@@ -114,7 +155,7 @@ export default function SelectStorePage() {
             disabled={!selectedStoreId || loading}
             className="w-full bg-blue-600 text-white p-2 rounded font-medium hover:bg-blue-700 transition disabled:opacity-50 text-sm"
           >
-            {loading ? 'Saving Location...' : 'Confirm Store Selection'}
+            {loading ? 'Saving Profile...' : 'Confirm Account Setup'}
           </button>
         </form>
       </div>
