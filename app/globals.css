@@ -27,27 +27,35 @@ body {
 
 @media print {
   @page {
-    size: landscape;
-    /* Forces landscape automatically in Chrome/Edge/Safari */
-    margin: 0.5in;
-    /* Sets the strict 0.5-inch margin around the entire page */
+    /* Use landscape keyword OR width height dimensions—not both */
+    size: 11in 8.5in;
+    margin: 0.25in !important;
   }
 
-  * {
+  *,
+  ::before,
+  ::after {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
-  body,
-  html {
+  html,
+  body {
     width: 100% !important;
     height: 100% !important;
-    background-color: white !important;
+    background: #ffffff !important;
+    background-color: #ffffff !important;
     margin: 0 !important;
     padding: 0 !important;
     overflow: visible !important;
   }
 
+  /* Force all background wrappers transparent during print */
+  body * {
+    background-color: transparent;
+  }
+
+  /* Hide UI elements marked as no-print */
   .no-print {
     display: none !important;
   }

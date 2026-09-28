@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState, useLayoutEffect } from 'react';
+import React, { useEffect, useRef, useState, useLayoutEffect, useMemo } from 'react';
 import { MenuItem } from '../Sidebar/FeatureSidebar';
 import { sortEntreesForMenu } from '@/lib/menuOrdering';
 
@@ -13,6 +13,21 @@ interface PrintPreviewProps {
   prices: Record<string, number | string>;
 }
 
+const TYPOGRAPHY_LEVELS = [
+  { headerSize: 24, itemSize: 20, descSize: 14, sectionMarginTop: 24, itemGap: 8 },
+  { headerSize: 23, itemSize: 19, descSize: 13.5, sectionMarginTop: 20, itemGap: 8 },
+  { headerSize: 22, itemSize: 18, descSize: 13, sectionMarginTop: 20, itemGap: 6 },
+  { headerSize: 21, itemSize: 17, descSize: 12.5, sectionMarginTop: 18, itemGap: 6 },
+  { headerSize: 20, itemSize: 16.5, descSize: 12, sectionMarginTop: 16, itemGap: 6 },
+  { headerSize: 19, itemSize: 16, descSize: 11.5, sectionMarginTop: 14, itemGap: 4 },
+  { headerSize: 18, itemSize: 15, descSize: 11, sectionMarginTop: 12, itemGap: 4 },
+  { headerSize: 17, itemSize: 14, descSize: 10.5, sectionMarginTop: 10, itemGap: 4 },
+  { headerSize: 16, itemSize: 13, descSize: 10, sectionMarginTop: 8, itemGap: 2 },
+  { headerSize: 15, itemSize: 12, descSize: 9.5, sectionMarginTop: 8, itemGap: 2 },
+  { headerSize: 14, itemSize: 11, descSize: 9, sectionMarginTop: 6, itemGap: 2 },
+  { headerSize: 13, itemSize: 10, descSize: 8.5, sectionMarginTop: 4, itemGap: 2 },
+];
+
 export default function PrintPreview({
   hasHolidayFeature,
   holidayTitle = 'Holiday Specials',
@@ -21,22 +36,20 @@ export default function PrintPreview({
   prices,
 }: PrintPreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const testContainerRef = useRef<HTMLDivElement>(null);
+  const cardMeasureRef = useRef<HTMLDivElement>(null);
+  const leftColumnRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
   const [showPrintModal, setShowPrintModal] = useState(false);
+  
+  const [activeLevelIndex, setActiveLevelIndex] = useState(0);
+  const [titleScaleFactors, setTitleScaleFactors] = useState<Record<string, number>>({});
 
-  // 5 discrete font sizing tiers from largest (0) to smallest (4)
-  const FONT_LEVELS = [
-    { titleSize: 16, titleClass: 'font-bold', desc: 'text-xs leading-snug', header: 'text-base font-bold', spacing: 'space-y-2' },
-    { titleSize: 14, titleClass: 'font-bold', desc: 'text-[11px] leading-tight', header: 'text-sm font-bold', spacing: 'space-y-1.5' },
-    { titleSize: 12, titleClass: 'font-bold', desc: 'text-[10px] leading-tight', header: 'text-xs font-bold', spacing: 'space-y-1' },
-    { titleSize: 11, titleClass: 'font-bold', desc: 'text-[9px] leading-tight', header: 'text-[11px] font-bold', spacing: 'space-y-0.5' },
-    { titleSize: 10, titleClass: 'font-bold', desc: 'text-[8.5px] leading-none', header: 'text-[10px] font-bold', spacing: 'space-y-0.5' },
-  ];
+  const safeMenuItems = Array.isArray(menuItems) ? menuItems : [];
+  const safeItemIds = Array.isArray(selectedItemIds) ? selectedItemIds : [];
+  const selectionKey = useMemo(() => safeItemIds.slice().sort().join(','), [safeItemIds]);
+  const pricesKey = useMemo(() => JSON.stringify(prices), [prices]);
 
-  const [activeFontLevelIndex, setActiveFontLevelIndex] = useState(0);
-
-  // Handle overall fit-to-view container scaling for the viewport preview
+  // Viewport scaling
   useEffect(() => {
     const handleResize = () => {
       if (!containerRef.current) return;
@@ -46,11 +59,8 @@ export default function PrintPreview({
       const parentWidth = parent.clientWidth - 48;
       const parentHeight = parent.clientHeight - 48;
 
-      const targetWidth = 1056;
-      const targetHeight = 816;
-
-      const scaleX = parentWidth / targetWidth;
-      const scaleY = parentHeight / targetHeight;
+      const scaleX = parentWidth / 1056;
+      const scaleY = parentHeight / 816;
       const newScale = Math.min(scaleX, scaleY, 1);
 
       setScale(newScale > 0.3 ? newScale : 0.3);
@@ -61,29 +71,72 @@ export default function PrintPreview({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Safeguards against undefined props during initial mounts
-  const safeMenuItems = Array.isArray(menuItems) ? menuItems : [];
-  const safeItemIds = Array.isArray(selectedItemIds) ? selectedItemIds : [];
-  const selectionKey = safeItemIds.slice().sort().join(',');
-
-  // Reset to Level 0 whenever selection changes
+  // Pass 1: Height Measurement Pass with forced nowrap on test node
   useLayoutEffect(() => {
-    setActiveFontLevelIndex(0);
-  }, [selectionKey, hasHolidayFeature]);
+    const el = cardMeasureRef.current;
+    if (!el) return;
 
-  // Fluid overflow detection: compares actual content height against its container box height
-  useLayoutEffect(() => {
-    if (!testContainerRef.current) return;
+    const TARGET_HEIGHT = 730;
 
-    const el = testContainerRef.current;
-    const isOverflowing = el.scrollHeight > el.clientHeight;
+    let bestIndex = 0;
+    for (let i = 0; i < TYPOGRAPHY_LEVELS.length; i++) {
+      const level = TYPOGRAPHY_LEVELS[i];
 
-    if (isOverflowing && activeFontLevelIndex < FONT_LEVELS.length - 1) {
-      setActiveFontLevelIndex((prev) => prev + 1);
+      el.style.setProperty('--header-size', `${level.headerSize}px`);
+      el.style.setProperty('--item-size', `${level.itemSize}px`);
+      el.style.setProperty('--desc-size', `${level.descSize}px`);
+      el.style.setProperty('--section-mt', `${level.sectionMarginTop}px`);
+      el.style.setProperty('--item-gap', `${level.itemGap}px`);
+
+      if (el.offsetHeight <= TARGET_HEIGHT) {
+        bestIndex = i;
+        break;
+      }
+      bestIndex = i;
     }
-  }, [activeFontLevelIndex, selectionKey, hasHolidayFeature]);
 
-  const currentStyles = FONT_LEVELS[activeFontLevelIndex];
+    setActiveLevelIndex(bestIndex);
+  }, [selectionKey, hasHolidayFeature, pricesKey]);
+
+  // Pass 2: Check horizontal overflow for individual titles and downscale by 0.5px until they fit
+  useLayoutEffect(() => {
+    const colEl = leftColumnRef.current;
+    if (!colEl) return;
+
+    const availableWidth = colEl.clientWidth - 32;
+    const titleNodes = colEl.querySelectorAll<HTMLElement>('[data-title-id]');
+    const newScales: Record<string, number> = {};
+
+    titleNodes.forEach((node) => {
+      const id = node.getAttribute('data-title-id');
+      if (!id) return;
+
+      // Temporarily clear any previous scale factor to read the baseline size from CSS variables
+      node.style.fontSize = '';
+      const baseFontSize = parseFloat(window.getComputedStyle(node).fontSize);
+      let currentFontSize = baseFontSize;
+
+      // Force nowrap during check
+      const originalWhiteSpace = node.style.whiteSpace;
+      node.style.whiteSpace = 'nowrap';
+
+      // Step down by 0.5px until it fits within available width or hits minimum size (9px)
+      while (node.scrollWidth > availableWidth && currentFontSize > 9) {
+        currentFontSize -= 0.5;
+        node.style.fontSize = `${currentFontSize}px`;
+      }
+
+      node.style.whiteSpace = originalWhiteSpace;
+
+      if (currentFontSize < baseFontSize) {
+        newScales[id] = currentFontSize / baseFontSize;
+      }
+    });
+
+    setTitleScaleFactors(newScales);
+  }, [activeLevelIndex, selectionKey, pricesKey]);
+
+  const currentStyles = TYPOGRAPHY_LEVELS[activeLevelIndex];
 
   const handlePrintClick = () => {
     const lastPrintTime = localStorage.getItem('last_menu_print_timestamp');
@@ -111,15 +164,23 @@ export default function PrintPreview({
   const getSubtype = (item: MenuItem) => (item.subtype || '').toLowerCase();
   const getType = (item: MenuItem) => (item.type || '').toLowerCase();
 
-  const m6Item = safeMenuItems.find((i) => (matchStr(i.short_name).includes('6oz') || matchStr(i.display_name).includes('6oz')) && (matchStr(i.type).includes('medallion') || matchStr(i.subtype).includes('medallion')));
-  const m9Item = safeMenuItems.find((i) => (matchStr(i.short_name).includes('9oz') || matchStr(i.display_name).includes('9oz')) && (matchStr(i.type).includes('medallion') || matchStr(i.subtype).includes('medallion')));
-
-  const medallion6ozPrice = m6Item ? prices[m6Item.id] ?? '0' : '0';
-  const medallion9ozPrice = m9Item ? prices[m9Item.id] ?? '0' : '0';
-
   function matchStr(val?: string) {
     return (val || '').toLowerCase().trim();
   }
+
+  const m6Item = safeMenuItems.find(
+    (i) =>
+      (matchStr(i.short_name).includes('6oz') || matchStr(i.display_name).includes('6oz')) &&
+      (matchStr(i.type).includes('medallion') || matchStr(i.subtype).includes('medallion'))
+  );
+  const m9Item = safeMenuItems.find(
+    (i) =>
+      (matchStr(i.short_name).includes('9oz') || matchStr(i.display_name).includes('9oz')) &&
+      (matchStr(i.type).includes('medallion') || matchStr(i.subtype).includes('medallion'))
+  );
+
+  const medallion6ozPrice = m6Item ? prices[m6Item.id] ?? '0' : '0';
+  const medallion9ozPrice = m9Item ? prices[m9Item.id] ?? '0' : '0';
 
   const getItemHeading = (item: MenuItem & { price?: number | string }) => {
     const isMedallion =
@@ -154,18 +215,18 @@ export default function PrintPreview({
   );
 
   const rawChefItems = activeItems
-  .filter(
-    (item) =>
-      !item.is_holiday_only &&
-      (getCategory(item).includes('chef') ||
-        getCategory(item).includes('entree') ||
-        getCategory(item).includes('steak') ||
-        getCategory(item).includes('fish'))
-  )
-  .map((item) => ({
-    ...item,
-    price: Number(prices[item.id] ?? 0),
-  }));
+    .filter(
+      (item) =>
+        !item.is_holiday_only &&
+        (getCategory(item).includes('chef') ||
+          getCategory(item).includes('entree') ||
+          getCategory(item).includes('steak') ||
+          getCategory(item).includes('fish'))
+    )
+    .map((item) => ({
+      ...item,
+      price: Number(prices[item.id] ?? 0),
+    }));
 
   const chefSelections = sortEntreesForMenu(rawChefItems);
 
@@ -182,150 +243,179 @@ export default function PrintPreview({
 
   const holidayItems = activeItems.filter((item) => item.is_holiday_only || getCategory(item).includes('holiday'));
 
-  // Continuous fine-grained shrinking component for individual item titles
-  const AutoShrinkTitle = ({ text }: { text: string }) => {
-    const textRef = useRef<HTMLDivElement>(null);
-    const fontSizes = ['text-sm', 'text-[13px]', 'text-xs', 'text-[11px]', 'text-[10px]', 'text-[9px]'];
-    const [sizeIndex, setSizeIndex] = useState(0);
+  const CardContent = ({ styleVars, isMeasurement = false }: { styleVars?: React.CSSProperties; isMeasurement?: boolean }) => {
+    let isFirstSection = true;
 
-    useLayoutEffect(() => {
-      setSizeIndex(0);
-    }, [text, activeFontLevelIndex]);
+    const renderHeader = (title: string, sectionId: string, customColorClass = 'text-gray-900 border-red-900') => {
+      const isFirst = isFirstSection;
+      isFirstSection = false;
+      const scale = titleScaleFactors[sectionId] ?? 1;
+      const computedFontSize = `calc(var(--header-size, 20px) * ${scale})`;
 
-    useLayoutEffect(() => {
-      const el = textRef.current;
-      if (!el) return;
+      return (
+        <div
+          className="w-full"
+          style={{ marginTop: isFirst || isMeasurement ? 0 : 'var(--section-mt, 16px)' }}
+        >
+          <h2
+            data-title-id={sectionId}
+            style={{ fontSize: computedFontSize }}
+            className={`font-bold border-b-2 pb-0.5 inline-block px-3 uppercase tracking-wider ${customColorClass} whitespace-nowrap`}
+          >
+            {title}
+          </h2>
+        </div>
+      );
+    };
 
-      if (el.scrollWidth > el.clientWidth && sizeIndex < fontSizes.length - 1) {
-        setSizeIndex((prev) => prev + 1);
-      }
-    }, [sizeIndex, text]);
+    const renderItemHeading = (item: MenuItem, headingText: string) => {
+      const scale = titleScaleFactors[item.id] ?? 1;
+      const computedFontSize = `calc(var(--item-size, 16px) * ${scale})`;
+
+      return (
+        <div
+          data-title-id={item.id}
+          style={{ fontSize: computedFontSize }}
+          className="font-bold text-gray-900 leading-tight whitespace-nowrap"
+        >
+          {headingText}
+        </div>
+      );
+    };
 
     return (
-      <div
-        ref={textRef}
-        className={`${fontSizes[sizeIndex]} font-bold text-gray-900 whitespace-nowrap overflow-hidden w-full px-2`}
+      <div 
+        className={`flex flex-col w-full text-center ${isMeasurement ? '' : 'justify-between h-full'}`} 
+        style={styleVars}
       >
-        {text}
+        {hasHolidayFeature && holidayItems.length > 0 && (
+          <div className="w-full">
+            {renderHeader(holidayTitle, 'sec-holiday', 'text-amber-900 border-amber-800')}
+            <div className="mt-1 flex flex-col w-full" style={{ gap: 'var(--item-gap, 6px)' }}>
+              {holidayItems.map((item) => (
+                <div key={item.id} className="w-full">
+                  {renderItemHeading(item, getItemHeading(item))}
+                  {item.description && (
+                    <p style={{ fontSize: 'var(--desc-size, 12px)' }} className="text-gray-700 leading-normal mt-0.5 px-1">
+                      {item.description}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {sips.length > 0 && (
+          <div className="w-full">
+            {renderHeader('Signature Sips', 'sec-sips')}
+            <div className="mt-1 flex flex-col w-full" style={{ gap: 'var(--item-gap, 6px)' }}>
+              {sips.map((item) => (
+                <div key={item.id} className="w-full">
+                  {renderItemHeading(item, getItemHeading(item))}
+                  {item.description && (
+                    <p style={{ fontSize: 'var(--desc-size, 12px)' }} className="text-gray-700 leading-normal mt-0.5 px-1">
+                      {item.description}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {starters.length > 0 && (
+          <div className="w-full">
+            {renderHeader('Starters', 'sec-starters')}
+            <div className="mt-1 flex flex-col w-full" style={{ gap: 'var(--item-gap, 6px)' }}>
+              {starters.map((item) => (
+                <div key={item.id} className="w-full">
+                  {renderItemHeading(item, getItemHeading(item))}
+                  {item.description && (
+                    <p style={{ fontSize: 'var(--desc-size, 12px)' }} className="text-gray-700 leading-normal mt-0.5 px-1">
+                      {item.description}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {chefSelections.length > 0 && (
+          <div className="w-full">
+            {renderHeader("Chef's Selections", 'sec-chef')}
+            <div className="mt-1 flex flex-col w-full" style={{ gap: 'var(--item-gap, 6px)' }}>
+              {chefSelections.map((item) => (
+                <div key={item.id} className="w-full">
+                  {renderItemHeading(item, getItemHeading(item))}
+                  {item.description && (
+                    <p style={{ fontSize: 'var(--desc-size, 12px)' }} className="text-gray-700 leading-normal mt-0.5 px-1">
+                      {item.description}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {desserts.length > 0 && (
+          <div className="w-full">
+            {renderHeader('Homemade Ice Cream', 'sec-desserts')}
+            <p style={{ fontSize: 'var(--item-size, 16px)' }} className="font-bold text-gray-800 tracking-wide mt-1 px-1 whitespace-nowrap">
+              {desserts.map((item) => item.display_name).join(' • ')}
+            </p>
+          </div>
+        )}
       </div>
     );
   };
 
-  const SingleMenuCard = () => (
-    <div className="w-1/2 h-full py-0 text-center font-serif flex flex-col justify-between box-border overflow-hidden px-3">
-      {hasHolidayFeature && holidayItems.length > 0 && (
-        <div className="w-full">
-          <h2 className={`${currentStyles.header} text-amber-900 border-b-2 border-amber-800 pb-0.5 inline-block px-4 tracking-wider uppercase`}>
-            {holidayTitle}
-          </h2>
-          <div className={`mt-1 ${currentStyles.spacing}`}>
-            {holidayItems.map((item) => (
-              <div key={item.id} className="w-full">
-                <AutoShrinkTitle text={getItemHeading(item)} />
-                {item.description && <p className={`${currentStyles.desc} text-gray-700 px-1`}>{item.description}</p>}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {sips.length > 0 && (
-        <div className="w-full">
-          <h2 className={`${currentStyles.header} text-gray-900 border-b-2 border-red-900 pb-0.5 inline-block px-4 tracking-wider uppercase`}>
-            Signature Sips
-          </h2>
-          <div className={`mt-1 ${currentStyles.spacing}`}>
-            {sips.map((item) => (
-              <div key={item.id} className="w-full">
-                <AutoShrinkTitle text={getItemHeading(item)} />
-                {item.description && <p className={`${currentStyles.desc} text-gray-700 px-1`}>{item.description}</p>}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {starters.length > 0 && (
-        <div className="w-full">
-          <h2 className={`${currentStyles.header} text-gray-900 border-b-2 border-red-900 pb-0.5 inline-block px-4 tracking-wider uppercase`}>
-            Starters
-          </h2>
-          <div className={`mt-1 ${currentStyles.spacing}`}>
-            {starters.map((item) => (
-              <div key={item.id} className="w-full">
-                <AutoShrinkTitle text={getItemHeading(item)} />
-                {item.description && <p className={`${currentStyles.desc} text-gray-700 px-1`}>{item.description}</p>}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {chefSelections.length > 0 && (
-        <div className="w-full">
-          <h2 className={`${currentStyles.header} text-gray-900 border-b-2 border-red-900 pb-0.5 inline-block px-4 tracking-wider uppercase`}>
-            Chef's Selections
-          </h2>
-          <div className={`mt-1 ${currentStyles.spacing}`}>
-            {chefSelections.map((item) => (
-              <div key={item.id} className="w-full">
-                <AutoShrinkTitle text={getItemHeading(item)} />
-                {item.description && <p className={`${currentStyles.desc} text-gray-700 px-1`}>{item.description}</p>}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {desserts.length > 0 && (
-        <div className="w-full">
-          <h2 className={`${currentStyles.header} text-gray-900 border-b-2 border-red-900 pb-0.5 inline-block px-4 tracking-wider uppercase`}>
-            Homemade Ice Cream
-          </h2>
-          <p
-            style={{ fontSize: `${currentStyles.titleSize}px` }}
-            className={`font-bold text-gray-800 tracking-wide px-1 mt-1`}
-          >
-            {desserts.map((item) => item.display_name).join(' • ')}
-          </p>
-        </div>
-      )}
-    </div>
-  );
+  const currentCSSVars = {
+    '--header-size': `${currentStyles.headerSize}px`,
+    '--item-size': `${currentStyles.itemSize}px`,
+    '--desc-size': `${currentStyles.descSize}px`,
+    '--section-mt': `${currentStyles.sectionMarginTop}px`,
+    '--item-gap': `${currentStyles.itemGap}px`,
+  } as React.CSSProperties;
 
   return (
-    <div className="flex-1 bg-slate-200 overflow-hidden flex flex-col h-full relative">
-      <style jsx global>{`
+    <div className="print-root flex-1 bg-slate-200 overflow-hidden flex flex-col h-full relative">
+      <style dangerouslySetInnerHTML={{ __html: `
         @media print {
-          body {
-            background: white !important;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
+          body * {
+            visibility: hidden;
           }
-          .no-print {
+          .no-print, .print-root > div:first-child {
             display: none !important;
           }
-          @page {
-            size: landscape;
-            margin: 0.5in;
+          .physical-sheet, .physical-sheet * {
+            visibility: visible;
           }
           .physical-sheet {
-            box-shadow: none !important;
-            transform: none !important;
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
             width: 100% !important;
             height: 100% !important;
-            margin: 0 !important;
-            border: none !important;
+            transform: none !important;
+            box-shadow: none !important;
             background: white !important;
             padding: 0 !important;
+            margin: 0 !important;
           }
           .printer-margin-border {
             border: none !important;
+            background: transparent !important;
+          }
+          .printer-margin-border > div.absolute {
+            display: block !important;
+            border-left: 1px solid #94a3b8 !important;
           }
         }
-      `}</style>
+      `}} />
 
-      {/* Top action bar */}
       <div className="no-print bg-slate-100 border-b border-slate-300 px-6 py-2.5 flex justify-between items-center shrink-0 shadow-sm">
         <span className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Live Fit-to-View Print Preview</span>
         <button
@@ -337,11 +427,7 @@ export default function PrintPreview({
         </button>
       </div>
 
-      {/* Scaled Preview Viewport */}
-      <div
-        ref={containerRef}
-        className="flex-1 flex items-center justify-center p-4 overflow-hidden"
-      >
+      <div ref={containerRef} className="flex-1 flex items-center justify-center p-4 overflow-hidden">
         <div
           style={{
             width: '1056px',
@@ -349,14 +435,26 @@ export default function PrintPreview({
             transform: `scale(${scale})`,
             transformOrigin: 'center center',
           }}
-          className="physical-sheet bg-white shadow-2xl rounded relative flex flex-col border border-slate-300 p-[48px]"
+          className="physical-sheet bg-white shadow-2xl rounded relative flex flex-col p-[24px]"
         >
-          <div className="printer-margin-border w-full h-full relative flex flex-col border border-dashed border-slate-400 bg-white p-0">
-            <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-0.5 border-r border-dashed border-gray-400 z-10 pointer-events-none" />
+          <div className="printer-margin-border w-full h-full relative flex border border-dashed border-slate-300 bg-white overflow-hidden">
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 h-4 border-l border-slate-400 z-10 pointer-events-none" />
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-4 border-l border-slate-400 z-10 pointer-events-none" />
 
-            <div ref={testContainerRef} className="flex w-full h-full justify-between items-stretch overflow-hidden">
-              <SingleMenuCard />
-              <SingleMenuCard />
+            <div ref={leftColumnRef} className="w-1/2 h-full pt-4 pb-2 pl-2 pr-[24px] font-serif flex flex-col box-border overflow-hidden">
+              <CardContent styleVars={currentCSSVars} isMeasurement={false} />
+            </div>
+
+            <div className="w-1/2 h-full pt-4 pb-2 pl-[24px] pr-2 font-serif flex flex-col box-border overflow-hidden">
+              <CardContent styleVars={currentCSSVars} isMeasurement={false} />
+            </div>
+
+            <div
+              ref={cardMeasureRef}
+              style={{ width: 'calc(50% - 16px)' }}
+              className="absolute left-0 top-0 pointer-events-none opacity-0 invisible font-serif pl-2 pr-[24px] pt-4 box-border flex flex-col items-center text-center"
+            >
+              <CardContent isMeasurement={true} />
             </div>
           </div>
         </div>
@@ -370,15 +468,15 @@ export default function PrintPreview({
               <h3 className="text-xl font-bold text-gray-900">Quick Print Check</h3>
             </div>
             <p className="text-sm text-gray-600 leading-relaxed">
-              To make sure your menus cut perfectly down the center with exact 0.5-inch outer margins, please verify your browser print settings match these options once:
+              To ensure exact 0.25-inch outer margins and accurate center cut positioning, please verify your browser print settings once:
             </p>
             <ul className="text-sm text-gray-700 space-y-2 bg-slate-50 p-3 rounded border border-slate-200 list-disc list-inside">
               <li><strong>Orientation:</strong> Landscape</li>
-              <li><strong>Margins:</strong> Default or 0.5 inches</li>
+              <li><strong>Margins:</strong> 0.25 all around</li>
               <li><strong>Headers and footers:</strong> Unchecked (Off)</li>
             </ul>
             <p className="text-xs text-gray-500">
-              Your browser will remember these settings for the next month, so you won't see this reminder again soon!
+              Your browser will save these settings so you won't need to adjust them again!
             </p>
             <div className="flex justify-end space-x-3 pt-2">
               <button
