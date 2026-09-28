@@ -14,7 +14,7 @@ export default function Header() {
   const isSuperadmin = role === 'superadmin';
   const isSettings = pathname?.startsWith('/settings');
 
-  // Format the display name cleanly using the hook values fetched once above
+  // Format display name cleanly
   const displayName =
     profile?.first_name && profile?.last_name
       ? `${profile.first_name.charAt(0)}. ${profile.last_name}`
@@ -24,9 +24,9 @@ export default function Header() {
     <>
       <header className="no-print bg-slate-900 text-white px-6 py-3 flex justify-between items-center shadow border-b border-slate-800 shrink-0">
         <div className="flex items-center space-x-6">
-          <h1 className="text-xl font-bold tracking-wide">Connor Concepts</h1>
+          <h1 className="text-xl font-bold tracking-wide text-amber-400">Connor Concepts</h1>
 
-          {stores.length > 0 && (
+          {stores && stores.length > 0 && (
             <div className="flex items-center space-x-2">
               <span className="text-xs text-slate-400">Store:</span>
               {isSuperadmin ? (
@@ -35,7 +35,7 @@ export default function Header() {
                   className="bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 px-3 py-1.5 rounded text-sm transition flex items-center space-x-2 cursor-pointer"
                 >
                   <span className="font-medium">
-                    {selectedStore ? selectedStore.name : 'Select Store...'}
+                    {selectedStore ? selectedStore.nickname || selectedStore.name : 'Select Store...'}
                   </span>
                   <span className="text-slate-400 text-xs">▼</span>
                 </button>
@@ -46,11 +46,11 @@ export default function Header() {
                     const store = stores.find((s) => s.id === e.target.value);
                     if (store) changeStore(store);
                   }}
-                  className="bg-slate-800 text-white border border-slate-700 px-3 py-1.5 rounded text-sm"
+                  className="bg-slate-800 text-white border border-slate-700 px-3 py-1.5 rounded text-sm cursor-pointer"
                 >
                   {stores.map((s) => (
                     <option key={s.id} value={s.id}>
-                      {s.name}
+                      {s.nickname || s.name}
                     </option>
                   ))}
                 </select>

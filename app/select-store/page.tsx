@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabaseClient';
 interface StoreOption {
   id: string;
   name: string;
+  nickname?: string;
 }
 
 export default function SelectStorePage() {
@@ -25,9 +26,12 @@ export default function SelectStorePage() {
       return;
     }
 
-    // Fetch master list of stores for selection
+    // Fetch master list of stores including nickname
     const fetchAllStores = async () => {
-      const { data, error } = await supabase.from('stores').select('id, name').order('name');
+      const { data, error } = await supabase
+        .from('stores')
+        .select('id, name, nickname')
+        .order('name');
       if (!error && data) {
         setAvailableStores(data);
       }
@@ -95,7 +99,7 @@ export default function SelectStorePage() {
               <option value="">Select a store...</option>
               {availableStores.map((store) => (
                 <option key={store.id} value={store.id}>
-                  {store.name}
+                  {store.nickname || store.name}
                 </option>
               ))}
             </select>

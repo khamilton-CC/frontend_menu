@@ -7,12 +7,14 @@ import { User as SupabaseUser, Session } from '@supabase/supabase-js';
 export interface Store {
   id: string;
   name: string;
+  nickname?: string;
   has_holiday_feature: boolean;
 }
 
 export interface UserProfile {
   first_name: string;
   last_name: string;
+  primary_store_id?: string | null;
 }
 
 interface AuthContextType {
@@ -64,7 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    // 2. Listen for auth state changes (sign in, sign out, token refresh)
+    // 2. Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
@@ -88,7 +90,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      // Sync token before network call
       syncTokenToLocalStorage(session.access_token);
 
       const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
@@ -101,22 +102,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (res.ok) {
         const data = await res.json();
-        setRole(data.role);
-        setStores(data.stores);
-        setProfile(data.profile || null);
+        const userStores: Store[] = data.stores || [];
+        const userProfile: UserProfile | null = data.profile || null;
 
-        if (data.role !== 'superadmin' && (!data.stores || data.stores.length === 0)) {
+        setRole(data.role);
+        setStores(userStores);
+        setProfile(userProfile);
+
+        if (data.role !== 'superadmin' && userStores.length === 0) {
           if (window.location.pathname !== '/select-store') {
             window.location.href = '/select-store';
           }
-        } else {
-          const savedStore = localStorage.getItem('cc_selected_store');
-          if (savedStore) {
-            setSelectedStore(JSON.parse(savedStore));
-          } else if (data.stores && data.stores.length > 0) {
-            setSelectedStore(data.stores[0]);
-            localStorage.setItem('cc_selected_store', JSON.stringify(data.stores[0]));
+        } else if (userStores.length > 0) {
+          // Priority 1: Match store using profile.primary_store_id
+          let storeToSelect = userStores.find(
+            (s) => s.id === userProfile?.primary_store_id
+          );
+
+          // Priority 2: Fall back to explicitly saved store in localStorage if primary wasn't found
+          if (!storeToSelect) {
+            const savedStoreRaw = localStorage.getItem('cc_selected_store');
+            if (savedStoreRaw) {
+              const parsedSavedStore = JSON.parse(savedStoreRaw);
+              storeToSelect = userStores.find((s) => s.id === parsedSavedStore.id);
+            }
           }
+
+          // Priority 3: Fall back to first store in list
+          if (!storeToSelect) {
+            storeToSelect = userStores[0];
+          }
+
+          setSelectedStore(storeToSelect);
+          localStorage.setItem('cc_selected_store', JSON.stringify(storeToSelect));
         }
       }
     } catch (err) {

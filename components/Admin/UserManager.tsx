@@ -116,35 +116,35 @@ export default function UserManager() {
   };
 
   const handleSaveUser = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedUser) return;
+  e.preventDefault();
+  if (!selectedUser) return;
 
-    try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/admin/users/${selectedUser.id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          first_name: editFirstName,
-          last_name: editLastName,
-          role: isSuperadmin ? editRole : selectedUser.role,
-          primary_store_id: isSuperadmin ? editPrimaryStoreId : selectedUser.primary_store_id,
-          store_ids: isSuperadmin ? editStoreIds : selectedUser.store_ids,
-        }),
-      });
+  try {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/admin/users/${selectedUser.id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        first_name: editFirstName,
+        last_name: editLastName,
+        role: isSuperadmin ? editRole : selectedUser.role,
+        primary_store_id: isSuperadmin ? editPrimaryStoreId : selectedUser.primary_store_id,
+        store_ids: isSuperadmin ? editStoreIds : selectedUser.store_ids,
+      }),
+    });
 
-      if (res.ok) {
-        setIsEditModalOpen(false);
-        fetchUsersAndStores();
-      } else {
-        alert('Failed to update user');
-      }
-    } catch (err) {
-      console.error('Error updating user:', err);
+    if (res.ok) {
+      setIsEditModalOpen(false);
+      fetchUsersAndStores();
+    } else {
+      alert('Failed to update user');
     }
-  };
+  } catch (err) {
+    console.error('Error updating user:', err);
+  }
+};
 
   const handleSavePassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -232,11 +232,11 @@ export default function UserManager() {
 
   const chopHouseStores = stores
     .filter((s) => s.division === 'chop_house')
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .sort((a, b) => a.nickname.localeCompare(b.nickname));
 
   const connorsStores = stores
     .filter((s) => s.division === 'connors')
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .sort((a, b) => a.nickname.localeCompare(b.nickname));
 
   const filteredUsers = users.filter(
     (u) =>
@@ -330,7 +330,7 @@ export default function UserManager() {
             >
               <div className="flex items-center space-x-3">
                 <span className="text-slate-600 text-xs font-bold">{isStoreOpen ? '▼' : '▶'}</span>
-                <span className="font-bold text-slate-900 text-sm">{store.name}</span>
+                <span className="font-bold text-slate-900 text-sm">{store.nickname}</span>
                 <span className="bg-slate-300 text-slate-900 text-xs px-2 py-0.5 rounded-full font-semibold">
                   {storeUsers.length} {storeUsers.length === 1 ? 'user' : 'users'}
                 </span>
@@ -377,7 +377,7 @@ export default function UserManager() {
                                 </span>
                               </td>
                               <td className="py-3 px-3 text-xs text-slate-800 font-medium">
-                                {primaryStoreObj?.name || 'None'}
+                                {primaryStoreObj?.nickname || 'None'}
                                 {isPrimary && (
                                   <span className="ml-1.5 text-[10px] bg-emerald-200 text-emerald-900 font-bold px-1.5 py-0.5 rounded">
                                     Primary
@@ -573,212 +573,240 @@ export default function UserManager() {
       </div>
 
       {/* Edit User Modal */}
-      {isEditModalOpen && selectedUser && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full p-6 space-y-4 border border-slate-300 max-h-[90vh] overflow-y-auto">
-            <h3 className="text-lg font-bold text-slate-900 border-b border-slate-200 pb-3">
-              Edit User: <span className="font-normal text-slate-700">{selectedUser.email}</span>
-            </h3>
+{isEditModalOpen && selectedUser && (
+  <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
+    <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full p-6 space-y-4 border border-slate-300 max-h-[90vh] overflow-y-auto">
+      <h3 className="text-lg font-bold text-slate-900 border-b border-slate-200 pb-3 flex justify-between items-center">
+        <span>Edit User: <span className="font-normal text-slate-700">{selectedUser.email}</span></span>
+        {!isSuperadmin && (
+          <span className="text-xs bg-amber-100 text-amber-800 font-semibold px-2 py-0.5 rounded border border-amber-300">
+            Read-Only Permissions
+          </span>
+        )}
+      </h3>
 
-            <form onSubmit={handleSaveUser} className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-800 mb-1">First Name</label>
-                  <input
-                    type="text"
-                    value={editFirstName}
-                    onChange={(e) => setEditFirstName(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-slate-400 rounded-md bg-white text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-600"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-800 mb-1">Last Name</label>
-                  <input
-                    type="text"
-                    value={editLastName}
-                    onChange={(e) => setEditLastName(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-slate-400 rounded-md bg-white text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-600"
-                  />
-                </div>
-              </div>
-
-              {isSuperadmin && (
-                <>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-800 mb-1">Role</label>
-                    <select
-                      value={editRole}
-                      onChange={(e) => setEditRole(e.target.value as 'admin' | 'superadmin')}
-                      className="w-full px-3 py-2 text-sm border border-slate-400 rounded-md bg-white text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-600"
-                    >
-                      <option value="admin">Admin</option>
-                      <option value="superadmin">Superadmin</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-800 mb-1">Primary Store</label>
-                    <select
-                      value={editPrimaryStoreId}
-                      onChange={(e) =>
-                        handlePrimaryStoreChange(e.target.value, editStoreIds, setEditStoreIds, setEditPrimaryStoreId)
-                      }
-                      className="w-full px-3 py-2 text-sm border border-slate-400 rounded-md bg-white text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-600"
-                    >
-                      <option value="">Select Primary Store...</option>
-                      <optgroup label="Chop House Locations">
-                        {chopHouseStores.map((s) => (
-                          <option key={s.id} value={s.id}>
-                            {s.name}
-                          </option>
-                        ))}
-                      </optgroup>
-                      <optgroup label="Connors Locations">
-                        {connorsStores.map((s) => (
-                          <option key={s.id} value={s.id}>
-                            {s.name}
-                          </option>
-                        ))}
-                      </optgroup>
-                    </select>
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between items-center mb-1">
-                      <label className="block text-xs font-bold text-slate-800">Assigned Stores</label>
-                      <button
-                        type="button"
-                        onClick={() => handleToggleAll(editStoreIds, setEditStoreIds, editPrimaryStoreId)}
-                        className="text-xs text-blue-700 hover:text-blue-900 font-bold cursor-pointer"
-                      >
-                        {isAllSelected(editStoreIds) ? 'Deselect All Stores' : 'Select All Stores'}
-                      </button>
-                    </div>
-
-                    <div className="max-h-56 overflow-y-auto border border-slate-400 rounded-md p-3 space-y-4 bg-white">
-                      {/* Chop House Group */}
-                      <div>
-                        <div className="flex justify-between items-center mb-1.5 border-b border-slate-200 pb-1">
-                          <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                            Chop House Locations
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              handleToggleDivision(
-                                chopHouseIds,
-                                editStoreIds,
-                                setEditStoreIds,
-                                isChopHouseSelected(editStoreIds),
-                                editPrimaryStoreId
-                              )
-                            }
-                            className="text-[11px] text-blue-600 hover:text-blue-800 font-bold cursor-pointer"
-                          >
-                            {isChopHouseSelected(editStoreIds) ? 'Deselect Chop House' : 'Select All Chop House'}
-                          </button>
-                        </div>
-                        <div className="space-y-1.5 pl-1">
-                          {chopHouseStores.map((s) => (
-                            <label
-                              key={s.id}
-                              className="flex items-center space-x-2.5 text-sm text-slate-900 font-medium cursor-pointer hover:bg-slate-50 p-1 rounded"
-                            >
-                              <input
-                                type="checkbox"
-                                checked={editStoreIds.includes(s.id)}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    setEditStoreIds([...editStoreIds, s.id]);
-                                  } else {
-                                    if (s.id === editPrimaryStoreId) {
-                                      alert('Cannot uncheck the Primary Store while it is set as primary.');
-                                      return;
-                                    }
-                                    setEditStoreIds(editStoreIds.filter((id) => id !== s.id));
-                                  }
-                                }}
-                                className="rounded border-slate-400 text-blue-700 focus:ring-blue-600 h-4 w-4"
-                              />
-                              <span>{s.name}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Connors Group */}
-                      <div className="pt-2">
-                        <div className="flex justify-between items-center mb-1.5 border-b border-slate-200 pb-1">
-                          <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                            Connors Locations
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              handleToggleDivision(
-                                connorsIds,
-                                editStoreIds,
-                                setEditStoreIds,
-                                isConnorsSelected(editStoreIds),
-                                editPrimaryStoreId
-                              )
-                            }
-                            className="text-[11px] text-blue-600 hover:text-blue-800 font-bold cursor-pointer"
-                          >
-                            {isConnorsSelected(editStoreIds) ? 'Deselect Connors' : 'Select All Connors'}
-                          </button>
-                        </div>
-                        <div className="space-y-1.5 pl-1">
-                          {connorsStores.map((s) => (
-                            <label
-                              key={s.id}
-                              className="flex items-center space-x-2.5 text-sm text-slate-900 font-medium cursor-pointer hover:bg-slate-50 p-1 rounded"
-                            >
-                              <input
-                                type="checkbox"
-                                checked={editStoreIds.includes(s.id)}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    setEditStoreIds([...editStoreIds, s.id]);
-                                  } else {
-                                    if (s.id === editPrimaryStoreId) {
-                                      alert('Cannot uncheck the Primary Store while it is set as primary.');
-                                      return;
-                                    }
-                                    setEditStoreIds(editStoreIds.filter((id) => id !== s.id));
-                                  }
-                                }}
-                                className="rounded border-slate-400 text-blue-700 focus:ring-blue-600 h-4 w-4"
-                              />
-                              <span>{s.name}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </>
-              )}
-
-              <div className="flex justify-end space-x-3 pt-4 border-t border-slate-200">
-                <button
-                  type="button"
-                  onClick={() => setIsEditModalOpen(false)}
-                  className="px-4 py-2 text-sm text-slate-700 hover:bg-slate-200 rounded-md font-bold transition cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 text-sm bg-blue-700 hover:bg-blue-800 text-white rounded-md font-bold transition cursor-pointer shadow-sm"
-                >
-                  Save Changes
-                </button>
-              </div>
-            </form>
+      <form onSubmit={handleSaveUser} className="space-y-4">
+        {/* First Name & Last Name (Editable by both Admin and Superadmin) */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-bold text-slate-800 mb-1">First Name</label>
+            <input
+              type="text"
+              value={editFirstName}
+              onChange={(e) => setEditFirstName(e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-slate-400 rounded-md bg-white text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-600"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-800 mb-1">Last Name</label>
+            <input
+              type="text"
+              value={editLastName}
+              onChange={(e) => setEditLastName(e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-slate-400 rounded-md bg-white text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-600"
+            />
           </div>
         </div>
-      )}
+
+        {/* Role Select (Disabled if not Superadmin) */}
+        <div>
+          <label className="block text-xs font-bold text-slate-800 mb-1">Role</label>
+          <select
+            value={editRole}
+            disabled={!isSuperadmin}
+            onChange={(e) => setEditRole(e.target.value as 'admin' | 'superadmin')}
+            className={`w-full px-3 py-2 text-sm border border-slate-400 rounded-md font-semibold focus:outline-none focus:ring-2 focus:ring-blue-600 ${
+              !isSuperadmin ? 'bg-slate-100 text-slate-500 cursor-not-allowed border-slate-300' : 'bg-white text-slate-900'
+            }`}
+          >
+            <option value="admin">Admin</option>
+            <option value="superadmin">Superadmin</option>
+          </select>
+        </div>
+
+        {/* Primary Store Select (Disabled if not Superadmin) */}
+        <div>
+          <label className="block text-xs font-bold text-slate-800 mb-1">Primary Store</label>
+          <select
+            value={editPrimaryStoreId}
+            disabled={!isSuperadmin}
+            onChange={(e) =>
+              handlePrimaryStoreChange(e.target.value, editStoreIds, setEditStoreIds, setEditPrimaryStoreId)
+            }
+            className={`w-full px-3 py-2 text-sm border border-slate-400 rounded-md font-semibold focus:outline-none focus:ring-2 focus:ring-blue-600 ${
+              !isSuperadmin ? 'bg-slate-100 text-slate-500 cursor-not-allowed border-slate-300' : 'bg-white text-slate-900'
+            }`}
+          >
+            <option value="">Select Primary Store...</option>
+            <optgroup label="Chop House Locations">
+              {chopHouseStores.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.nickname}
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label="Connors Locations">
+              {connorsStores.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.nickname}
+                </option>
+              ))}
+            </optgroup>
+          </select>
+        </div>
+
+        {/* Assigned Stores Checkboxes (Disabled if not Superadmin) */}
+        <div>
+          <div className="flex justify-between items-center mb-1">
+            <label className="block text-xs font-bold text-slate-800">Assigned Stores</label>
+            {isSuperadmin && (
+              <button
+                type="button"
+                onClick={() => handleToggleAll(editStoreIds, setEditStoreIds, editPrimaryStoreId)}
+                className="text-xs text-blue-700 hover:text-blue-900 font-bold cursor-pointer"
+              >
+                {isAllSelected(editStoreIds) ? 'Deselect All Stores' : 'Select All Stores'}
+              </button>
+            )}
+          </div>
+
+          <div className={`max-h-56 overflow-y-auto border rounded-md p-3 space-y-4 ${
+            !isSuperadmin ? 'bg-slate-50 border-slate-300' : 'bg-white border-slate-400'
+          }`}>
+            {/* Chop House Group */}
+            <div>
+              <div className="flex justify-between items-center mb-1.5 border-b border-slate-200 pb-1">
+                <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  Chop House Locations
+                </span>
+                {isSuperadmin && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleToggleDivision(
+                        chopHouseIds,
+                        editStoreIds,
+                        setEditStoreIds,
+                        isChopHouseSelected(editStoreIds),
+                        editPrimaryStoreId
+                      )
+                    }
+                    className="text-[11px] text-blue-600 hover:text-blue-800 font-bold cursor-pointer"
+                  >
+                    {isChopHouseSelected(editStoreIds) ? 'Deselect Chop House' : 'Select All Chop House'}
+                  </button>
+                )}
+              </div>
+              <div className="space-y-1.5 pl-1">
+                {chopHouseStores.map((s) => (
+                  <label
+                    key={s.id}
+                    className={`flex items-center space-x-2.5 text-sm font-medium p-1 rounded ${
+                      !isSuperadmin ? 'text-slate-500 cursor-not-allowed' : 'text-slate-900 cursor-pointer hover:bg-slate-50'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      disabled={!isSuperadmin}
+                      checked={editStoreIds.includes(s.id)}
+                      onChange={(e) => {
+                        if (!isSuperadmin) return;
+                        if (e.target.checked) {
+                          setEditStoreIds([...editStoreIds, s.id]);
+                        } else {
+                          if (s.id === editPrimaryStoreId) {
+                            alert('Cannot uncheck the Primary Store while it is set as primary.');
+                            return;
+                          }
+                          setEditStoreIds(editStoreIds.filter((id) => id !== s.id));
+                        }
+                      }}
+                      className="rounded border-slate-400 text-blue-700 focus:ring-blue-600 h-4 w-4 disabled:opacity-50 disabled:cursor-not-allowed"
+                    />
+                    <span>{s.nickname}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Connors Group */}
+            <div className="pt-2">
+              <div className="flex justify-between items-center mb-1.5 border-b border-slate-200 pb-1">
+                <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  Connors Locations
+                </span>
+                {isSuperadmin && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleToggleDivision(
+                        connorsIds,
+                        editStoreIds,
+                        setEditStoreIds,
+                        isConnorsSelected(editStoreIds),
+                        editPrimaryStoreId
+                      )
+                    }
+                    className="text-[11px] text-blue-600 hover:text-blue-800 font-bold cursor-pointer"
+                  >
+                    {isConnorsSelected(editStoreIds) ? 'Deselect Connors' : 'Select All Connors'}
+                  </button>
+                )}
+              </div>
+              <div className="space-y-1.5 pl-1">
+                {connorsStores.map((s) => (
+                  <label
+                    key={s.id}
+                    className={`flex items-center space-x-2.5 text-sm font-medium p-1 rounded ${
+                      !isSuperadmin ? 'text-slate-500 cursor-not-allowed' : 'text-slate-900 cursor-pointer hover:bg-slate-50'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      disabled={!isSuperadmin}
+                      checked={editStoreIds.includes(s.id)}
+                      onChange={(e) => {
+                        if (!isSuperadmin) return;
+                        if (e.target.checked) {
+                          setEditStoreIds([...editStoreIds, s.id]);
+                        } else {
+                          if (s.id === editPrimaryStoreId) {
+                            alert('Cannot uncheck the Primary Store while it is set as primary.');
+                            return;
+                          }
+                          setEditStoreIds(editStoreIds.filter((id) => id !== s.id));
+                        }
+                      }}
+                      className="rounded border-slate-400 text-blue-700 focus:ring-blue-600 h-4 w-4 disabled:opacity-50 disabled:cursor-not-allowed"
+                    />
+                    <span>{s.nickname}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Modal Buttons */}
+        <div className="flex justify-end space-x-3 pt-4 border-t border-slate-200">
+          <button
+            type="button"
+            onClick={() => setIsEditModalOpen(false)}
+            className="px-4 py-2 text-xs font-bold text-slate-700 bg-slate-100 rounded-md hover:bg-slate-200 cursor-pointer"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            className="px-4 py-2 text-xs font-bold text-white bg-blue-700 rounded-md hover:bg-blue-800 cursor-pointer shadow-sm"
+          >
+            Save Changes
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+)}
 
       {/* Dedicated Reset Password Modal */}
       {isPasswordModalOpen && selectedUser && (
@@ -904,14 +932,14 @@ export default function UserManager() {
                   <optgroup label="Chop House Locations">
                     {chopHouseStores.map((s) => (
                       <option key={s.id} value={s.id}>
-                        {s.name}
+                        {s.nickname}
                       </option>
                     ))}
                   </optgroup>
                   <optgroup label="Connors Locations">
                     {connorsStores.map((s) => (
                       <option key={s.id} value={s.id}>
-                        {s.name}
+                        {s.nickname}
                       </option>
                     ))}
                   </optgroup>
@@ -975,7 +1003,7 @@ export default function UserManager() {
                             }}
                             className="rounded border-slate-400 text-blue-700 focus:ring-blue-600 h-4 w-4"
                           />
-                          <span>{s.name}</span>
+                          <span>{s.nickname}</span>
                         </label>
                       ))}
                     </div>
@@ -1025,7 +1053,7 @@ export default function UserManager() {
                             }}
                             className="rounded border-slate-400 text-blue-700 focus:ring-blue-600 h-4 w-4"
                           />
-                          <span>{s.name}</span>
+                          <span>{s.nickname}</span>
                         </label>
                       ))}
                     </div>

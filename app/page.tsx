@@ -7,7 +7,7 @@ import FeatureSidebar, { MenuItem } from '@/components/Sidebar/FeatureSidebar';
 import PrintPreview from '@/components/Layout/PrintPreview';
 
 export default function Home() {
-  const { user, token, selectedStore } = useAuth();
+  const { user, role, stores, token, selectedStore, loading: authLoading } = useAuth();
   const router = useRouter();
 
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -17,10 +17,22 @@ export default function Home() {
   const [holidayTitle, setHolidayTitle] = useState('Holiday Specials');
   const [loading, setLoading] = useState(true);
 
+  // Auth & Store Routing Protection
   useEffect(() => {
-    if (!user) router.push('/login');
-  }, [user, router]);
+    if (authLoading) return;
 
+    if (!user) {
+      router.push('/login');
+      return;
+    }
+
+    // Regular users/admins with 0 stores MUST go to /select-store
+    if (role !== 'superadmin' && stores && stores.length === 0) {
+      router.push('/select-store');
+    }
+  }, [user, role, stores, authLoading, router]);
+
+  // Fetch store menu data
   useEffect(() => {
     if (!selectedStore || !token) return;
 
@@ -109,7 +121,14 @@ export default function Home() {
     await handlePriceBlur(targetItem.id, newPrice);
   };
 
-  if (!user) return null;
+  // Show clean spinner while verifying Auth State
+  if (authLoading || !user) {
+    return (
+      <div className="flex-1 flex items-center justify-center bg-slate-900 text-slate-300">
+        <div className="text-sm">Authenticating...</div>
+      </div>
+    );
+  }
 
   const m6Item = menuItems.find(
     (i) =>
@@ -151,7 +170,7 @@ export default function Home() {
       />
 
       <PrintPreview
-        storeName={selectedStore?.name}
+        storeName={selectedStore?.nickname || selectedStore?.name}
         hasHolidayFeature={selectedStore?.has_holiday_feature}
         holidayTitle={holidayTitle}
         menuItems={menuItems}
