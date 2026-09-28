@@ -16,6 +16,7 @@ interface UserRecord {
 interface StoreRecord {
   id: string;
   name: string;
+  nickname: string;
   division: 'chop_house' | 'connors';
 }
 
