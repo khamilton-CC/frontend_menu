@@ -71,12 +71,12 @@ export default function PrintPreview({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Pass 1: Height Measurement Pass
+  // Pass 1: Measure natural stacked height and step down if it exceeds available sheet height
   useLayoutEffect(() => {
     const el = cardMeasureRef.current;
     if (!el) return;
 
-    const TARGET_HEIGHT = 715;
+    const AVAILABLE_CONTENT_HEIGHT = 768;
 
     let bestIndex = 0;
     for (let i = 0; i < TYPOGRAPHY_LEVELS.length; i++) {
@@ -88,7 +88,7 @@ export default function PrintPreview({
       el.style.setProperty('--section-mt', `${level.sectionMarginTop}px`);
       el.style.setProperty('--item-gap', `${level.itemGap}px`);
 
-      if (el.offsetHeight <= TARGET_HEIGHT) {
+      if (el.scrollHeight <= AVAILABLE_CONTENT_HEIGHT) {
         bestIndex = i;
         break;
       }
@@ -98,12 +98,12 @@ export default function PrintPreview({
     setActiveLevelIndex(bestIndex);
   }, [selectionKey, hasHolidayFeature, pricesKey]);
 
-  // Pass 2: Check horizontal overflow for individual titles & item headings
+  // Pass 2: Check horizontal overflow cleanly using actual clientWidth
   useLayoutEffect(() => {
     const colEl = leftColumnRef.current;
     if (!colEl) return;
 
-    const availableWidth = colEl.clientWidth - 32;
+    const availableWidth = colEl.clientWidth;
     const titleNodes = colEl.querySelectorAll<HTMLElement>('[data-title-id]');
     const newScales: Record<string, number> = {};
 
@@ -111,7 +111,7 @@ export default function PrintPreview({
 
     titleNodes.forEach((node) => {
       const id = node.getAttribute('data-title-id');
-      const type = node.getAttribute('data-title-type'); // 'header' or 'item'
+      const type = node.getAttribute('data-title-type');
       if (!id) return;
 
       const baseFontSize = type === 'header' ? currentLevel.headerSize : currentLevel.itemSize;
@@ -121,7 +121,7 @@ export default function PrintPreview({
       const originalWhiteSpace = node.style.whiteSpace;
       node.style.whiteSpace = 'nowrap';
 
-      while (node.scrollWidth > availableWidth && currentFontSize > 9) {
+      while (node.scrollWidth > availableWidth && currentFontSize > 11) {
         currentFontSize -= 0.5;
         node.style.fontSize = `${currentFontSize}px`;
       }
@@ -243,7 +243,7 @@ export default function PrintPreview({
 
   const holidayItems = activeItems.filter((item) => item.is_holiday_only || getCategory(item).includes('holiday'));
 
-  const CardContent = ({ styleVars, isMeasurement = false }: { styleVars?: React.CSSProperties; isMeasurement?: boolean }) => {
+  const CardContent = ({ styleVars }: { styleVars?: React.CSSProperties }) => {
     let isFirstSection = true;
 
     const renderHeader = (title: string, sectionId: string, customColorClass = 'text-gray-900 border-red-900') => {
@@ -255,7 +255,7 @@ export default function PrintPreview({
       return (
         <div
           className="w-full"
-          style={{ marginTop: isFirst || isMeasurement ? 0 : 'var(--section-mt, 16px)' }}
+          style={{ marginTop: isFirst ? 0 : 'var(--section-mt, 16px)' }}
         >
           <h2
             data-title-id={sectionId}
@@ -286,10 +286,7 @@ export default function PrintPreview({
     };
 
     return (
-      <div 
-        className={`flex flex-col w-full text-center ${isMeasurement ? '' : 'justify-between h-full'}`} 
-        style={styleVars}
-      >
+      <div className="flex flex-col w-full text-center" style={styleVars}>
         {hasHolidayFeature && holidayItems.length > 0 && (
           <div className="w-full">
             {renderHeader(holidayTitle, 'sec-holiday', 'text-amber-900 border-amber-800')}
@@ -383,7 +380,7 @@ export default function PrintPreview({
   } as React.CSSProperties;
 
   return (
-    <div className="print-root flex-1 bg-slate-200 overflow-hidden flex flex-col h-full relative">
+    <div className="print-root flex-1 bg-slate-200 overflow-hidden flex flex-col h-full relative" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", Times, serif' }}>
       <style dangerouslySetInnerHTML={{ __html: `
         @media print {
           body * {
@@ -443,21 +440,24 @@ export default function PrintPreview({
             <div className="absolute top-0 left-1/2 -translate-x-1/2 h-4 border-l border-slate-400 z-10 pointer-events-none" />
             <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-4 border-l border-slate-400 z-10 pointer-events-none" />
 
-            <div ref={leftColumnRef} className="w-1/2 h-full pt-4 pb-2 pl-2 pr-[24px] font-serif flex flex-col box-border overflow-hidden">
-              <CardContent styleVars={currentCSSVars} isMeasurement={false} />
-            </div>
+            {/* Left Column - Centered Vertically */}
+<div ref={leftColumnRef} className="w-1/2 h-full pt-4 pb-4 pl-2 pr-[24px] flex flex-col justify-center box-border overflow-hidden">
+  <CardContent styleVars={currentCSSVars} />
+</div>
 
-            <div className="w-1/2 h-full pt-4 pb-2 pl-[24px] pr-2 font-serif flex flex-col box-border overflow-hidden">
-              <CardContent styleVars={currentCSSVars} isMeasurement={false} />
-            </div>
+{/* Right Column - Centered Vertically */}
+<div className="w-1/2 h-full pt-4 pb-4 pl-[24px] pr-2 flex flex-col justify-center box-border overflow-hidden">
+  <CardContent styleVars={currentCSSVars} />
+</div>
 
-            <div
-              ref={cardMeasureRef}
-              style={{ width: 'calc(50% - 16px)' }}
-              className="absolute left-0 top-0 pointer-events-none opacity-0 invisible font-serif pl-2 pr-[24px] pt-4 box-border flex flex-col items-center text-center"
-            >
-              <CardContent isMeasurement={true} />
-            </div>
+            {/* Measurement Div - Mirrors exact vertical alignment flow */}
+<div
+  ref={cardMeasureRef}
+  style={{ width: 'calc(50% - 16px)' }}
+  className="absolute left-0 top-0 pointer-events-none opacity-0 invisible pl-2 pr-[24px] pt-4 pb-4 box-border flex flex-col justify-center"
+>
+  <CardContent />
+</div>
           </div>
         </div>
       </div>
