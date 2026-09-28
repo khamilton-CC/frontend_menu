@@ -76,7 +76,7 @@ export default function PrintPreview({
     const el = cardMeasureRef.current;
     if (!el) return;
 
-    const TARGET_HEIGHT = 730;
+    const TARGET_HEIGHT = 715;
 
     let bestIndex = 0;
     for (let i = 0; i < TYPOGRAPHY_LEVELS.length; i++) {
