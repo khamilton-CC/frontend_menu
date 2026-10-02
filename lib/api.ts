@@ -73,12 +73,16 @@ class ApiClient {
     });
   }
 
-  async saveStoreFeatureMenu(storeId: string, selectedItemIds: string[]) {
-    return this.request<{ success: boolean; message: string }>(`/api/store-menu/${storeId}`, {
-      method: 'POST',
-      body: JSON.stringify({ selectedItemIds }),
-    });
+  async getStoreFeatureMenu(storeId: string) {
+    return this.request<{ lunch: string[]; dinner: string[] }>(`/api/store-menu/${storeId}`);
   }
+
+  async saveStoreFeatureMenus(storeId: string, lunchItemIds: string[], dinnerItemIds: string[]) {
+  return this.request<{ success: boolean; message: string }>(`/api/store-menu/${storeId}`, {
+    method: 'POST',
+    body: JSON.stringify({ lunchItemIds, dinnerItemIds }),
+  });
+}
 
   // --- ADMIN & USER MANAGEMENT ENDPOINTS ---
   async getUsers() {

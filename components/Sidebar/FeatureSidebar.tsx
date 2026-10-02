@@ -132,7 +132,7 @@ export default function FeatureSidebar({
           const isSelected = selectedItemIds.includes(item.id);
           const rawPrice = prices[item.id];
           
-          // Use direct string value so typing dots or trailing zeros isn't blocked
+          // Use direct string value so typing decimal points or trailing values is smooth
           const displayPrice = rawPrice !== undefined && rawPrice !== null ? String(rawPrice) : '';
 
           return (

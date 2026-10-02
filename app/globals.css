@@ -26,37 +26,30 @@ body {
 }
 
 @media print {
-  @page {
-    /* Use landscape keyword OR width height dimensions—not both */
-    size: 11in 8.5in;
-    margin: 0.25in !important;
+
+  /* 1. Hide all standard UI containers and toolbars */
+  header,
+  nav,
+  aside,
+  .no-print,
+  button {
+    display: none !important;
   }
 
-  *,
-  ::before,
-  ::after {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-
+  /* 2. Ensure background colors print correctly */
   html,
   body {
-    width: 100% !important;
-    height: 100% !important;
     background: #ffffff !important;
-    background-color: #ffffff !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
     margin: 0 !important;
     padding: 0 !important;
-    overflow: visible !important;
+    overflow: hidden !important;
   }
 
-  /* Force all background wrappers transparent during print */
-  body * {
-    background-color: transparent;
-  }
-
-  /* Hide UI elements marked as no-print */
-  .no-print {
-    display: none !important;
+  /* 3. Ensure printer page settings match standard landscape letter */
+  @page {
+    size: 11in 8.5in landscape !important;
+    margin: 0 !important;
   }
 }
